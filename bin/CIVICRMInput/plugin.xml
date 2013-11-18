@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin
+
+   id="CiviCrmInput"
+   iconfile="icon.png"
+   description="CiviCrm Input"
+   tooltip="Input values from CiviCRM"
+   category="Input"
+   classname="es.stratebi.civi.input.CiviInputMeta">
+		
+		<libraries>
+    		<library name="CiviCrmInput.jar"/>
+    		<library name="lib/*.jar"/>
+		</libraries>
+		
+</plugin>

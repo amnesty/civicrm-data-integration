@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin
+
+   id="CiviCrmOutput"
+   iconfile="icon.png"
+   description="CiviCrm Output"
+   tooltip="Output values to CiviCRM"
+   category="Output"
+   classname="es.stratebi.civi.output.CiviOutputMeta">
+		<libraries>
+    		<library name="CiviCrmOutput.jar"/>
+    		<library name="lib/*.jar"/>
+		</libraries>
+</plugin>
