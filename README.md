@@ -4,7 +4,7 @@ CiviCRM Data Integration
 This is a Pentaho Data Integration plugin for CiviCRM. It allows you to take advantage
 of the power of Pentaho Data Integration tools and use it with your CiviCRM instance.
 
-It uses the CiviCRM API version 3, so you don't have to work directly with the data
+It uses CiviCRM API version 3, so you don't have to work directly with the data
 tables. :-D
 
 We recommend PDI version 4.3 or higher. You can download Pentaho Data Integration here:
@@ -13,23 +13,20 @@ http://sourceforge.net/projects/pentaho/
 Introduction
 ------------
 
-You can use separately input plugin, output plugin or both.
+You can use the input plugin or the output plugin separately, or both together.
 These plugins have been developed to simplify the data manipulation with CiviCRM.
 
-Once plugins have been installed you will get/insert data into your CiviCRM in a easy way.
+Once plugins have been installed you will be able to get/insert data into your CiviCRM in a easy way.
 
 
 
-
-
-
-What does this plugins do?
+What do these plugins do?
 --------------------------
 
-CIVICRMInput: Get data from your CiviCRM entity. 
-CIVICRMOutput: Insert/Update fields into your CiviCRM entity. If you fill the id entity you will update, if do not you will insert.
+CIVICRMInput: Gets data from your CiviCRM entity. 
+CIVICRMOutput: Inserts / Updates fields into your CiviCRM entity. If you fill in the id entity you will update that record, if not you will insert.
 
-The plugins require some information about your CiviCRM instance. You will need your REST URL, Site Key and Api Key from CiviCRM.
+The plugins require some credential information for your CiviCRM instance. You will need your REST URL, Site Key and Api Key from CiviCRM.
 
 
 How to install it?
@@ -41,13 +38,13 @@ The steps are very simple:
 
 2) Copy json-3.1.1.jar lib into your ${pdi_path}/data-integration/libext/
 
-3) Run PDI and enjoy!! You will find the plugin’s steps making a new transformation into the section input/output
+3) Run PDI, and enjoy!! You will find the plugins' steps for making a new transformation in the section input/output
 
 
 Are you a developer?
 --------------------
 
-This section will be available soon…
+This section will be available soon.
 
 
 License
