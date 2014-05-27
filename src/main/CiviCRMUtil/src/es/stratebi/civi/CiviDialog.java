@@ -7,6 +7,7 @@ import java.util.HashMap;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CCombo;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.TableItem;
 import org.pentaho.di.core.variables.Variables;
@@ -25,7 +26,6 @@ import es.stratebi.civi.util.FieldAttrs;
 import es.stratebi.civi.util.RestUtil;
 
 /*
- * 
  * 
  * Este es el dialogo de conexion a la API REST de CiviCRM
  */
@@ -49,6 +49,11 @@ public abstract class CiviDialog extends BaseStepDialog implements StepDialogInt
   protected String[] comboFieldList = new String[0];
   protected ColumnInfo outputFieldsColumn = null;
 
+  protected Button wCiviCrmDebugMode;
+  protected TextVar wCiviCrmResultField;
+
+  protected HashMap<String, FieldAttrs> civiCrmFields = new HashMap<String, FieldAttrs>();
+
   // Constructor
   public CiviDialog(Shell parent, Object in, TransMeta transMeta, String sname) {
     super(parent, (BaseStepMeta) in, transMeta, sname);
@@ -64,14 +69,15 @@ public abstract class CiviDialog extends BaseStepDialog implements StepDialogInt
    * Ver comentario del método ok(), no obstante los valores guardados en la
    * clase de intercambio CiviInputMeta son leídos aquí y cargados en el
    * dialogo, pues este método siempre es llamado antes de hacer visible el
-   * mismo. Hay que notar que la primera vez que se ejecuta el dialogo al no
+   * mismo. Hay que notar que la primera vez que se ejecuta el dialogo y al no
    * tener nada guardado se usan los valores establecidos en el método
    * setDefault de CiviInputMeta.
    */
   public void getData() {
 
     wStepname.selectAll();
-
+    
+    
     if (((CiviMeta) input).getCiviCrmRestUrl() != null) {
       wCiviCrmRestUrl.setText(((CiviMeta) input).getCiviCrmRestUrl());
     }
@@ -94,23 +100,42 @@ public abstract class CiviDialog extends BaseStepDialog implements StepDialogInt
       wCiviCrmEntity.setItems(eArray);
     }
 
-    if (((CiviMeta) input).getFields() != null) {
+    if (((CiviMeta) input).getCiviCrmResultField() != null) {
+      wCiviCrmResultField.setText(((CiviMeta) input).getCiviCrmResultField());
+    }
 
-      this.comboFieldList = new String[((CiviMeta) input).getFields().size()];
+    if (((CiviMeta) input).getCiviCrmDebugMode() != null) {
+      wCiviCrmDebugMode.setSelection(((CiviMeta) input).getCiviCrmDebugMode());
+    }
+
+    civiCrmFields.clear();
+    if (((CiviMeta) input).getCiviCrmFields() != null) {
+      civiCrmFields.putAll(((CiviMeta) input).getCiviCrmFields());
+    }
+    
+    if (((CiviMeta) input).getCiviCrmFields() != null) {
+
+      this.comboFieldList = new String[((CiviMeta) input).getCiviCrmFields().size()];
 
       int index = 0;
-      for (String cField : ((CiviMeta) input).getFields().keySet()) {
+      for (String cField : ((CiviMeta) input).getCiviCrmFields().keySet()) {
         this.comboFieldList[index++] = cField;
       }
+      Arrays.sort(this.comboFieldList);
 
-      if (((CiviMeta) input).getOutputMap() != null) {
+      if (((CiviMeta) input).getCiviCrmOutputMap() != null) {
         // Si hay elementos para salida entonces mostrarlos en la tabla
         int i = 0;
-        // for (String cFilter : ((CiviMeta) input).getOutputs().keySet()) {
-        for (String cField : ((CiviMeta) input).getKeyList()) {
-          TableItem item = tOutputFields.table.getItem(i);
+        for (String cField : ((CiviMeta) input).getCiviCrmKeyList()) {
+          TableItem item = null;
+          // IndexOutOfBounds Exception
+          if (i < tOutputFields.table.getItemCount()) {
+            item = new TableItem(tOutputFields.table, SWT.NONE);
+          } else {
+            item = tOutputFields.table.getItem(i);
+          }
           item.setText(1, cField);
-          item.setText(2, ((CiviMeta) input).getOutputMap().get(cField));
+          item.setText(2, ((CiviMeta) input).getCiviCrmOutputMap().get(cField));
           i++;
         }
       }
@@ -118,7 +143,6 @@ public abstract class CiviDialog extends BaseStepDialog implements StepDialogInt
       this.comboFieldList = new String[0];
     }
 
-    Arrays.sort(this.comboFieldList);
     this.outputFieldsColumn.setComboValues(this.comboFieldList);
 
     tOutputFields.removeEmptyRows();
@@ -131,14 +155,14 @@ public abstract class CiviDialog extends BaseStepDialog implements StepDialogInt
    * campos que admite la entidad, los cuales son desplegados en las tablas que
    * muestran los campos y filtros
    */
-  protected void getEntityFields() {
+  protected boolean getEntityFields() {
     try {
-      if (((CiviMeta) input).getFields().size() > 0) {
+      if (((CiviMeta) input).getCiviCrmFields().size() > 0) {
         MessageDialog.setDefaultImage(GUIResource.getInstance().getImageSpoon());
         boolean goOn = MessageDialog.openConfirm(shell, BaseMessages.getString(PKG, "CiviCrmDialog.DoMapping.ReplaceFields.Title"),
             BaseMessages.getString(PKG, "CiviCrmDialog.DoMapping.ReplaceFields.Msg"));
         if (!goOn) {
-          return;
+          return false;
         }
       }
       
@@ -149,25 +173,24 @@ public abstract class CiviDialog extends BaseStepDialog implements StepDialogInt
 
       RestUtil crUtil = new RestUtil(restUrl, apiKey, siteKey, "getfields", wCiviCrmEntity.getText());
 
-      HashMap<String, FieldAttrs> lFields = crUtil.getFieldLists(true);
-      ((CiviMeta) input).setFields(lFields);
+      civiCrmFields = crUtil.getFieldLists(true);
 
       tOutputFields.removeAll();
-      this.comboFieldList = new String[lFields.size()];
+      this.comboFieldList = new String[civiCrmFields.size()];
 
       int index = 0;
-      for (FieldAttrs field : lFields.values()) {
-        TableItem outputItem = new TableItem(tOutputFields.table, SWT.NONE);
-        outputItem.setText(1, field.getfFieldKey());
-        outputItem.setText(2, field.getfFieldKey());
-
-        /*
-         * Actualizando elementos desplegables de la tabla
-         */
+      for (FieldAttrs field : civiCrmFields.values()) {
         this.comboFieldList[index++] = field.getfFieldKey();
       }
 
       Arrays.sort(this.comboFieldList);
+
+      for (String field : this.comboFieldList) {
+        TableItem outputItem = new TableItem(tOutputFields.table, SWT.NONE);
+        outputItem.setText(1, field);
+        outputItem.setText(2, field);
+      }
+
       this.outputFieldsColumn.setComboValues(this.comboFieldList);
 
       tOutputFields.removeEmptyRows();
@@ -178,6 +201,7 @@ public abstract class CiviDialog extends BaseStepDialog implements StepDialogInt
       new ErrorDialog(shell, BaseMessages.getString(PKG, "CiviCrmStep.Error.EntityListError"), e.toString().split(":")[0], e);
       logBasic(BaseMessages.getString(PKG, "CiviCrmStep.Error.APIExecError", e.toString()));
     }
+    return true;
   }
 
   protected void testConnection() {
@@ -249,6 +273,7 @@ public abstract class CiviDialog extends BaseStepDialog implements StepDialogInt
     ((CiviMeta) input).setCiviCrmApiKey(wCiviCrmApiKey.getText());
     ((CiviMeta) input).setCiviCrmSiteKey(wCiviCrmSiteKey.getText());
     ((CiviMeta) input).setCiviCrmEntity(wCiviCrmEntity.getText());
+    ((CiviMeta) input).setCiviCrmDebugMode(wCiviCrmDebugMode.getSelection());
 
     int nrKeys = tOutputFields.nrNonEmpty();
     ArrayList<String> keyList = new ArrayList<String>();
@@ -268,7 +293,7 @@ public abstract class CiviDialog extends BaseStepDialog implements StepDialogInt
       
     }
 
-    HashMap<String, FieldAttrs> fields = ((CiviMeta) input).getFields();
+    HashMap<String, FieldAttrs> fields = ((CiviMeta) input).getCiviCrmFields();
     boolean matchFields = true;
     for (String fieldKey : keyList) {
       matchFields = (fields.get(fieldKey) != null);
@@ -284,8 +309,8 @@ public abstract class CiviDialog extends BaseStepDialog implements StepDialogInt
     }
 
     if (matchFields) {
-      ((CiviMeta) input).setKeyList(keyList);
-      ((CiviMeta) input).setOutputMap(hOutput);
+      ((CiviMeta) input).setCiviCrmKeyList(keyList);
+      ((CiviMeta) input).setCiviCrmOutputMap(hOutput);
     }
     return matchFields;
   }

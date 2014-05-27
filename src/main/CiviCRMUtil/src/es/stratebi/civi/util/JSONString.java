@@ -1,15 +1,15 @@
 package es.stratebi.civi.util;
 
-import org.json.JSONObject;
+//import org.json.JSONObject;
 
 
 public class JSONString {
-    public JSONObject jsonObject;
+    public Object jsonObject;
     public String jsonObjectKey;
 
     public long jsonIndex;
 
-    public JSONString(JSONObject jsonObject, long jsonIndex, String jsonObjectKey) {
+    public JSONString(Object jsonObject, long jsonIndex, String jsonObjectKey) {
         super();
         this.jsonObject = jsonObject;
         this.jsonIndex = jsonIndex;

@@ -1,6 +1,9 @@
 package es.stratebi.civi.input;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import org.eclipse.swt.SWT;
@@ -28,6 +31,8 @@ import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.Props;
+import org.pentaho.di.core.exception.KettleStepException;
+import org.pentaho.di.core.row.RowMetaInterface;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransMeta;
@@ -46,12 +51,9 @@ import org.pentaho.di.ui.trans.dialog.TransPreviewProgressDialog;
 import org.pentaho.di.ui.trans.step.BaseStepDialog;
 
 import es.stratebi.civi.CiviDialog;
-import es.stratebi.civi.CiviMeta;
 import es.stratebi.civi.util.FieldAttrs;
-import es.stratebi.civi.util.RestUtil;
 
 /*
- * 
  * 
  * Este es el dialogo de conexion a la API REST de CiviCRM
  */
@@ -73,6 +75,13 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
 
   private ColumnInfo filterFieldsColumn = null;
 
+  // all fields from the previous steps, used for drop down selection
+  private RowMetaInterface prevMetaFields = null;
+  private String[] prevFields = new String[0];
+
+  // the drop down column which should contain previous fields from stream
+  private ColumnInfo prevFieldColumn = null;
+
   private Group gEntity;
   private Composite gEntityFilter;
   private Composite gOutputFields;
@@ -87,6 +96,11 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
 
   private Listener lsGetEntities;
   private Listener lsTestConnection;
+  private Button wFilterWithPrevious;
+  private Label wlCiviCrmDebugMode;
+  private Label wlCiviCrmResultField;
+  private String[] comboFilterFields;
+  private ColumnInfo operatorFieldColumn;
 
   // Constructor
   public CiviInputDialog(Shell parent, Object in, TransMeta transMeta, String sname) {
@@ -238,7 +252,7 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
     fdlCiviPageSize.left = new FormAttachment(0, 0);
     fdlCiviPageSize.right = new FormAttachment(middle, -margin);
     wlCiviCrmPageSize.setLayoutData(fdlCiviPageSize);
-    
+
     // CiviCrm pageSize text
     wCiviCrmPageSize = new TextVar(transMeta, gConnectionGroup, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
     wCiviCrmPageSize.addModifyListener(lsMod);
@@ -250,7 +264,52 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
     fdCiviPageSize.left = new FormAttachment(middle, 0);
     fdCiviPageSize.right = new FormAttachment(100, 0);
     wCiviCrmPageSize.setLayoutData(fdCiviPageSize);
-    
+
+    // CiviCrm JSON ResultField
+    wlCiviCrmResultField = new Label(gConnectionGroup, SWT.RIGHT);
+    wlCiviCrmResultField.setText(BaseMessages.getString(PKG, "CiviCrmDialog.ResultFieldName.Label"));
+    props.setLook(wlCiviCrmResultField);
+
+    FormData fdlCiviCrmApiResultField = new FormData();
+    fdlCiviCrmApiResultField.top = new FormAttachment(wCiviCrmPageSize, margin);
+    fdlCiviCrmApiResultField.left = new FormAttachment(0, 0);
+    fdlCiviCrmApiResultField.right = new FormAttachment(middle, -margin);
+    wlCiviCrmResultField.setLayoutData(fdlCiviCrmApiResultField);
+
+    wCiviCrmResultField = new TextVar(transMeta, gConnectionGroup, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+    wCiviCrmResultField.addModifyListener(lsMod);
+    wCiviCrmResultField.setToolTipText(BaseMessages.getString(PKG, "CiviCrmDialog.ResultFieldName.Tooltip"));
+    props.setLook(wCiviCrmResultField);
+
+    FormData fdCiviCrmApiResultField = new FormData();
+    fdCiviCrmApiResultField.top = new FormAttachment(wCiviCrmPageSize, margin);
+    fdCiviCrmApiResultField.left = new FormAttachment(middle, 0);
+    fdCiviCrmApiResultField.right = new FormAttachment(100, 0);
+    wCiviCrmResultField.setLayoutData(fdCiviCrmApiResultField);
+
+    // CiviCrm debug mode label
+    wlCiviCrmDebugMode = new Label(gConnectionGroup, SWT.RIGHT);
+    wlCiviCrmDebugMode.setText(BaseMessages.getString(PKG, "CiviCrmDialog.DebugMode.Label"));
+    props.setLook(wlCiviCrmDebugMode);
+
+    FormData fdlDebugMode = new FormData();
+    fdlDebugMode.top = new FormAttachment(wCiviCrmResultField, margin);
+    fdlDebugMode.left = new FormAttachment(0, 0);
+    fdlDebugMode.right = new FormAttachment(middle, -margin);
+    wlCiviCrmDebugMode.setLayoutData(fdlDebugMode);
+
+    // CiviCrm debug mode checkbox
+    wCiviCrmDebugMode = new Button(gConnectionGroup, SWT.CHECK);
+    wCiviCrmDebugMode.setToolTipText(BaseMessages.getString(PKG, "CiviCrmDialog.DebugMode.Tooltip"));
+    props.setLook(wCiviCrmDebugMode);
+
+    FormData fdCiviCrmdDebugMode = new FormData();
+    fdCiviCrmdDebugMode.right = new FormAttachment(wlCiviCrmDebugMode, 25, SWT.RIGHT);
+    fdCiviCrmdDebugMode.top = new FormAttachment(wCiviCrmResultField, margin);
+    fdCiviCrmdDebugMode.left = new FormAttachment(wlCiviCrmDebugMode, 5);
+
+    wCiviCrmDebugMode.setLayoutData(fdCiviCrmdDebugMode);
+
     // Test connection button
     wTestConnection = new Button(gConnectionGroup, SWT.PUSH);
     wTestConnection.setText(BaseMessages.getString(PKG, "CiviCrmDialog.TestConnection.Button")); //$NON-NLS-1$
@@ -260,12 +319,12 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
     wGetEntities.setText(BaseMessages.getString(PKG, "CiviCrmDialog.GetEntityList.Button")); //$NON-NLS-1$
 
     FormData fdGetEntities = new FormData();
-    fdGetEntities.top = new FormAttachment(wCiviCrmPageSize, margin);
+    fdGetEntities.top = new FormAttachment(wlCiviCrmDebugMode, margin);
     fdGetEntities.right = new FormAttachment(100, 0);
     wGetEntities.setLayoutData(fdGetEntities);
 
     FormData fdTestConnection = new FormData();
-    fdTestConnection.top = new FormAttachment(wCiviCrmPageSize, margin);
+    fdTestConnection.top = new FormAttachment(wlCiviCrmDebugMode, margin);
     fdTestConnection.right = new FormAttachment(wGetEntities, -margin);
     wTestConnection.setLayoutData(fdTestConnection);
 
@@ -376,16 +435,17 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
      *************************************************/
 
     int outputKeyWidgetCols = 2;
-    int outputKeyWidgetRows = (((CiviInputMeta) input).getFields() != null ? ((CiviInputMeta) input).getFields().values().size() : 3);
+    int outputKeyWidgetRows = (((CiviInputMeta) input).getCiviCrmFields() != null ? ((CiviInputMeta) input).getCiviCrmFields().values()
+        .size() : 3);
 
     ColumnInfo[] ciOutputKeys = new ColumnInfo[outputKeyWidgetCols];
-    ciOutputKeys[0] = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.FieldName"), ColumnInfo.COLUMN_TYPE_CCOMBO,
+    ciOutputKeys[0] = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.NameField"), ColumnInfo.COLUMN_TYPE_CCOMBO,
         new String[] {}, false);
-    ciOutputKeys[1] = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.FieldRename"), ColumnInfo.COLUMN_TYPE_TEXT,
+    ciOutputKeys[1] = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.RenameField"), ColumnInfo.COLUMN_TYPE_TEXT,
         false);
-    
+
     outputFieldsColumn = ciOutputKeys[0];
-    
+
     tOutputFields = new TableView(transMeta, gOutputFields, SWT.BORDER | SWT.FULL_SELECTION | SWT.MULTI | SWT.V_SCROLL | SWT.H_SCROLL,
         ciOutputKeys, outputKeyWidgetRows, lsMod, props);
 
@@ -415,23 +475,47 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
     gEntityFilter = new Composite(wTabFolder, SWT.NONE);
     props.setLook(gEntityFilter);
 
-    FormLayout fieldsCompLayout = new FormLayout();
-    fieldsCompLayout.marginWidth = Const.FORM_MARGIN;
-    fieldsCompLayout.marginHeight = Const.FORM_MARGIN;
-    gEntityFilter.setLayout(fieldsCompLayout);
+    FormLayout entityFormLayout = new FormLayout();
+    entityFormLayout.marginWidth = Const.FORM_MARGIN;
+    entityFormLayout.marginHeight = Const.FORM_MARGIN;
+    gEntityFilter.setLayout(entityFormLayout);
 
+    // Update fields from previous steps?
+    /*
+    wFilterWithPrevious = new Button(gEntityFilter, SWT.PUSH);
+    wFilterWithPrevious.setText(BaseMessages.getString(PKG, "CiviCrmDialog.UpdatePreviousFields.Title"));
+    wFilterWithPrevious.setToolTipText(BaseMessages.getString(PKG, "CiviCrmDialog.UpdatePreviousFields.Tooltip"));
+    props.setLook(wFilterWithPrevious);
+
+    FormData fdFilterWithPrevious = new FormData();
+    fdFilterWithPrevious.right = new FormAttachment(100, 0);
+    fdFilterWithPrevious.top = new FormAttachment(0, margin);
+    wFilterWithPrevious.setLayoutData(fdFilterWithPrevious);
+
+    wFilterWithPrevious.addSelectionListener(new SelectionAdapter() {
+      public void widgetSelected(SelectionEvent arg0) {
+        updatePreviousFields();
+      }
+    });
+    */
+    
     /*************************************************
      * // KEY / FILTER TABLE
      *************************************************/
-    int keyWidgetCols = 2;
-    int keyWidgetRows = (((CiviInputMeta) input).getFields() != null ? ((CiviInputMeta) input).getFields().values().size() : 1);
+    int keyWidgetCols = 3;
+    int keyWidgetRows = 3;
+    // (((CiviInputMeta) input).getCiviCrmFields() != null ? ((CiviInputMeta)
+    // input).getCiviCrmFields().values().size() : 1);
 
     ColumnInfo[] ciKeys = new ColumnInfo[keyWidgetCols];
-    ciKeys[0] = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.FieldName"), ColumnInfo.COLUMN_TYPE_CCOMBO,
+    ciKeys[0] = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.NameField"), ColumnInfo.COLUMN_TYPE_CCOMBO,
         new String[] {}, false);
-    ciKeys[1] = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.FieldValue"), ColumnInfo.COLUMN_TYPE_TEXT, false);
+    ciKeys[1] = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.FilterOperator"), ColumnInfo.COLUMN_TYPE_CCOMBO);
+    ciKeys[2] = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.InputValueName"), ColumnInfo.COLUMN_TYPE_CCOMBO);
 
     filterFieldsColumn = ciKeys[0];
+    operatorFieldColumn = ciKeys[1];
+    prevFieldColumn = ciKeys[2];
 
     tFilterFields = new TableView(transMeta, gEntityFilter, SWT.BORDER | SWT.FULL_SELECTION | SWT.MULTI | SWT.V_SCROLL | SWT.H_SCROLL,
         ciKeys, keyWidgetRows, lsMod, props);
@@ -439,13 +523,14 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
     FormData fdFields = new FormData();
     fdFields.left = new FormAttachment(0, 0);
     fdFields.top = new FormAttachment(0, margin);
+    //fdFields.top = new FormAttachment(wFilterWithPrevious, margin);
     fdFields.right = new FormAttachment(100, -margin);
     fdFields.bottom = new FormAttachment(100, -margin);
     tFilterFields.setLayoutData(fdFields);
 
     FormData fdFilterFieldsComp = new FormData();
     fdFilterFieldsComp.left = new FormAttachment(0, 0);
-    fdFilterFieldsComp.top = new FormAttachment(0, 0);
+    fdFilterFieldsComp.top = new FormAttachment(gEntityFilter, 0);
     fdFilterFieldsComp.right = new FormAttachment(100, 0);
     fdFilterFieldsComp.bottom = new FormAttachment(100, 0);
     gEntityFilter.setLayoutData(fdFilterFieldsComp);
@@ -538,11 +623,93 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
     return stepname;
   }
 
-  protected void getEntityFields() {
-    super.getEntityFields();
-    tFilterFields.removeAll();
-    tFilterFields.setRowNums();
-    tFilterFields.optWidth(true);
+  protected void updatePreviousFields() {
+    try {
+      prevMetaFields = transMeta.getPrevStepFields(stepname);
+
+      if (prevMetaFields != null && !prevMetaFields.isEmpty()) {
+        prevFields = prevMetaFields.getFieldNames();
+      } else {
+        prevFields = new String[0];
+      }
+      /*
+      int nrKeys = tFilterFields.nrNonEmpty();
+      for (int i = 0; i < nrKeys; i++) {
+        TableItem item = tFilterFields.getNonEmpty(i);
+        String field = item.getText(1);
+        item.setText(3, "");
+        if (prevFields.length >0 && field != null && !field.equals("")) {
+          for (int t = 0; t < prevFields.length; t++) {
+            if (field.equalsIgnoreCase(prevFields[t])) {
+              item.setText(3, field);
+              break;
+            }
+          }
+        }
+      }
+      */
+    } catch (KettleStepException e) {
+      e.printStackTrace();
+    }
+    prevFieldColumn.setComboValues(prevFields);
+  }
+
+  protected boolean getEntityFields() {
+    try {
+      if (!super.getEntityFields()) {
+        return false;
+      }
+
+      tFilterFields.clearAll();
+
+      int nrKeys = comboFieldList.length;
+      for (int i = 0; i < nrKeys; i++) {
+        TableItem filterItem = new TableItem(tFilterFields.table, SWT.NONE);
+        filterItem.setText(1, comboFieldList[i]);
+      }
+      tFilterFields.removeEmptyRows();
+
+      this.comboFilterFields = this.comboFieldList;
+
+      filterFieldsColumn.setComboValues(this.comboFilterFields);
+
+      prevMetaFields = transMeta.getPrevStepFields(stepname);
+
+      if (prevMetaFields != null && !prevMetaFields.isEmpty()) {
+        prevFields = prevMetaFields.getFieldNames();
+        prevFieldColumn.setComboValues(prevFields);
+
+        nrKeys = tFilterFields.nrNonEmpty();
+        for (int i = 0; i < nrKeys; i++) {
+          TableItem item = tFilterFields.getNonEmpty(i);
+          String field = item.getText(1);
+          item.setText(2, "=");
+          item.setText(3, "");
+          if (field != null && !field.equals("")) {
+            for (int t = 0; t < prevFields.length; t++) {
+              if (field.equalsIgnoreCase(prevFields[t])) {
+                item.setText(3, field);
+                break;
+              }
+            }
+          }
+        }
+      } else {
+        prevFields = new String[0];
+        nrKeys = tFilterFields.nrNonEmpty();
+        for (int i = 0; i < nrKeys; i++) {
+          TableItem item = tFilterFields.getNonEmpty(i);
+          item.setText(2, "");
+        }
+      }
+
+      tFilterFields.setRowNums();
+      tFilterFields.optWidth(true);
+    } catch (Exception e) {
+      new ErrorDialog(shell, BaseMessages.getString(PKG, "CiviCrmStep.Error.EntityListError"), e.toString().split(":")[0], e); //$NON-NLS-1$ //$NON-NLS-2$
+      logBasic(BaseMessages.getString(PKG, "CiviCrmStep.Error.APIExecError", e.toString()));
+    }
+    return true;
   }
 
   /*
@@ -562,22 +729,33 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
       wCiviCrmPageSize.setText(((CiviInputMeta) input).getCiviCrmPageSize().toString());
     }
 
-    if (((CiviInputMeta) input).getFields() != null) {
-
-      if (((CiviInputMeta) input).getFilterMap() != null) {
+    if (((CiviInputMeta) input).getCiviCrmFields() != null && ((CiviInputMeta) input).getCiviCrmFields().size() > 0) {
+      ArrayList<String> opList = ((CiviInputMeta) input).getCiviCrmFilterOperator();
+      if (((CiviInputMeta) input).getCiviCrmFilterMap() != null) {
         // Si hay elementos para filtrar entonces mostrarlos en la tabla
         int i = 0;
-        for (String cFilter : ((CiviInputMeta) input).getFilterList()) {
-          TableItem item = tFilterFields.table.getItem(i);
-          item.setText(1, cFilter);
-          item.setText(2, ((CiviInputMeta) input).getFilterMap().get(cFilter));
-          i++;
+        if (((CiviInputMeta) input).getCiviCrmFilterList().size() > 0) {
+          for (String cFilter : ((CiviInputMeta) input).getCiviCrmFilterList()) {
+            TableItem item = new TableItem(tFilterFields.table, SWT.NONE);
+            item.setText(1, cFilter);
+            String op = (i >= opList.size()) ? "=" : opList.get(i);
+            item.setText(2, op);
+            String filterValue = ((CiviInputMeta) input).getCiviCrmFilterMap().get(cFilter);
+            item.setText(3, (filterValue != null) ? filterValue : "");
+            i++;
+          }
         }
       }
     }
 
-    this.filterFieldsColumn.setComboValues(this.comboFieldList);
+//    this.prevFields = ((CiviInputMeta) input).getCiviCrmPrevFields().toArray(this.prevFields);
 
+//    this.prevFieldColumn.setComboValues(this.prevFields);
+    this.operatorFieldColumn.setComboValues(new String[] { "=", "<", ">", "LIKE", "NOT LIKE" });
+    this.filterFieldsColumn.setComboValues(this.comboFieldList);
+    
+    updatePreviousFields();
+    
     tFilterFields.removeEmptyRows();
     tFilterFields.setRowNums();
     tFilterFields.optWidth(true);
@@ -594,9 +772,7 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
   protected boolean ok() {
 
     int nrKeys = tOutputFields.nrNonEmpty();
-    boolean matchFields = true;
 
-    HashMap<String, FieldAttrs> fields = ((CiviMeta) input).getFields();
     ArrayList<String> keyList = new ArrayList<String>();
     ArrayList<String> filterList = new ArrayList<String>();
 
@@ -607,18 +783,99 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
       // Verificamos que los elementos de salida siempre tengan un campo
       // seleccionado y luego si no hay un alias le ponemos el mismo nombre del
       // campo
-      
+
       if (item.getText(1) != null && !item.getText(1).equals("")) {
-        String fieldKey = item.getText(1); 
-        matchFields = (fields.get(fieldKey) != null);
-        if (!matchFields) {
-          String msg = "";
-             msg = BaseMessages.getString(PKG, "CiviCrmStep.Error.FieldNotMatch")
-             .replace("$1", fieldKey)
-             .replace("$2", activeEntity);
-          Exception e = new Exception();
-          new ErrorDialog(shell, BaseMessages.getString(PKG, "CiviCrmStep.Error.UnableFindField"), msg, e);
-          break;
+        keyList.add(item.getText(1));
+        hOutput.put(item.getText(1), (item.getText(2) != null && !item.getText(2).equals("")) ? item.getText(2) : item.getText(1));
+      }
+    }
+
+    tFilterFields.removeEmptyRows();
+    HashMap<String, String> hFilter = new HashMap<String, String>();
+    ArrayList<String> fOperatorList = new ArrayList<String>();
+    nrKeys = tFilterFields.nrNonEmpty();
+    for (int i = 0; i < nrKeys; i++) {
+      TableItem item = tFilterFields.getNonEmpty(i);
+
+      String fieldKey = item.getText(1);
+      filterList.add(fieldKey);
+      fOperatorList.add(item.getText(2).equals("") || ("<>=NOT LIKE".indexOf(item.getText(2)) == -1) ? "=" : item.getText(2));
+      hFilter.put(item.getText(1), item.getText(3));
+    }
+    stepname = wStepname.getText();
+
+    // Datos de la conexion
+    try {
+      ((CiviInputMeta) input).setCiviCrmPageSize(Integer.parseInt(wCiviCrmPageSize.getText()));
+    } catch (NumberFormatException e) {
+      ((CiviInputMeta) input).setCiviCrmPageSize(25);
+    }
+
+    ((CiviInputMeta) input).setCiviCrmRestUrl(wCiviCrmRestUrl.getText());
+    ((CiviInputMeta) input).setCiviCrmApiKey(wCiviCrmApiKey.getText());
+    ((CiviInputMeta) input).setCiviCrmSiteKey(wCiviCrmSiteKey.getText());
+    ((CiviInputMeta) input).setCiviCrmEntity(wCiviCrmEntity.getText());
+
+    // Datos para depuracion
+    ((CiviInputMeta) input).setCiviCrmResultField(wCiviCrmResultField.getText());
+    ((CiviInputMeta) input).setCiviCrmDebugMode(wCiviCrmDebugMode.getSelection());
+
+    // Datos para los filtros a usar en las llamadas al API de CIVICRM
+    ((CiviInputMeta) input).setCiviCrmFilterMap(hFilter);
+    
+    // Chequeamos si se ha desvinculado el paso del anterior, de ser así pasamos un arr
+    try {
+      if (transMeta.getPrevStepFields(stepname) != null && !transMeta.getPrevStepFields(stepname).isEmpty()) {
+        ((CiviInputMeta) input).setCiviCrmPrevFields(new ArrayList<String>(Arrays.asList(prevFields)));
+        ((CiviInputMeta) input).setHasPreviousStep(true);
+      } else {
+        ((CiviInputMeta) input).setCiviCrmPrevFields(new ArrayList<String>());
+        ((CiviInputMeta) input).setHasPreviousStep(false);
+      }
+    } catch (KettleStepException e) {
+      e.printStackTrace();
+    }
+    
+    ((CiviInputMeta) input).setCiviCrmFilterOperator(fOperatorList);
+    ((CiviInputMeta) input).setCiviCrmFilterList(filterList);
+
+    // Datos con los campos de salida del paso
+    ((CiviInputMeta) input).setCiviCrmKeyList(keyList);
+    ((CiviInputMeta) input).setCiviCrmOutputMap(hOutput);
+    ((CiviInputMeta) input).setCiviCrmFields(civiCrmFields);
+
+    dispose();
+
+    return true;
+  }
+
+  protected void preview() {
+    // Create the table input reader step...
+    HashMap<String, String> hFilter = new HashMap<String, String>();
+    ArrayList<String> fOperatorList = new ArrayList<String>();
+    ArrayList<String> keyList = new ArrayList<String>();
+    ArrayList<String> filterList = new ArrayList<String>();
+    HashMap<String, String> hOutput = new HashMap<String, String>();
+    
+    HashMap<String, FieldAttrs> cloneFields = (HashMap<String, FieldAttrs>)civiCrmFields.clone();
+    
+    
+    int nrKeys = tOutputFields.nrNonEmpty();
+    for (int i = 0; i < nrKeys; i++) {
+      TableItem item = tOutputFields.getNonEmpty(i);
+      // Verificamos que los elementos de salida siempre tengan un campo
+      // seleccionado y luego si no hay un alias le ponemos el mismo nombre del
+      // campo
+
+      if (item.getText(1) != null && !item.getText(1).equals("")) {
+        String fieldKey = item.getText(1);
+        // Actualizando la lista de campos, cuando un campo no exista en la lista 
+        // entonces se crea y su tipo predeterminado es String (2) 
+        if (!cloneFields.containsKey(fieldKey)) {
+          FieldAttrs field = new FieldAttrs();
+          field.setfFieldKey(fieldKey);
+          field.setfType("2");
+          cloneFields.put(fieldKey, field);
         }
 
         keyList.add(item.getText(1));
@@ -626,113 +883,48 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
       }
     }
 
-    HashMap<String, String> hFilter = new HashMap<String, String> ();
-    if (matchFields) {
-      nrKeys = tFilterFields.nrNonEmpty();
-      for (int i = 0; i < nrKeys; i++) {
-        TableItem item = tFilterFields.getNonEmpty(i);
+    nrKeys = tFilterFields.nrNonEmpty();
+    for (int i = 0; i < nrKeys; i++) {
+      TableItem item = tFilterFields.getNonEmpty(i);
 
-        String fieldKey = item.getText(1); 
-        matchFields = (fields.get(fieldKey) != null);
-        
-        if (!matchFields) {
-          String msg = "";
-             msg = BaseMessages.getString(PKG, "CiviCrmStep.Error.FieldNotMatch")
-             .replace("$1", fieldKey)
-             .replace("$2", activeEntity);
-          Exception e = new Exception();
-          new ErrorDialog(shell, BaseMessages.getString(PKG, "CiviCrmStep.Error.UnableFindField"), msg, e);
-          break;
-        }
+      String fieldKey = item.getText(1);
 
-        filterList.add(fieldKey);
-        hFilter.put(item.getText(1), item.getText(2));
-      }
-    }
-    if (matchFields) {
-      stepname = wStepname.getText();
-
-      ((CiviInputMeta) input).setCiviCrmRestUrl(wCiviCrmRestUrl.getText());
-      ((CiviInputMeta) input).setCiviCrmApiKey(wCiviCrmApiKey.getText());
-      ((CiviInputMeta) input).setCiviCrmSiteKey(wCiviCrmSiteKey.getText());
-      ((CiviInputMeta) input).setCiviCrmEntity(wCiviCrmEntity.getText());
-
+      filterList.add(fieldKey);
+//      try {
+//        fOperatorList.add(item.getText(2).equals("") || ("<>=NOT LIKE".indexOf(item.getText(2)) == -1) ? "=" : (item.getText(2).toLowerCase().contains("like") ? URLEncoder.encode((String) item.getText(2), "UTF-8") : item.getText(2)));
+        fOperatorList.add(item.getText(2).equals("") || ("<>=NOT LIKE".indexOf(item.getText(2)) == -1) ? "=" : item.getText(2));
+//      } catch (UnsupportedEncodingException e1) {
+//        e1.printStackTrace();
+//      }
       try {
-        ((CiviInputMeta)input).setCiviCrmPageSize(Integer.parseInt(wCiviCrmPageSize.getText()));
-      } catch (NumberFormatException e) {
-        ((CiviInputMeta)input).setCiviCrmPageSize(25);
+        hFilter.put(item.getText(1), item.getText(3).toLowerCase().contains("like") ? URLEncoder.encode((String) item.getText(3), "UTF-8") : item.getText(3));
+      } catch (UnsupportedEncodingException e) {
+        e.printStackTrace();
       }
-
-      ((CiviInputMeta) input).setFilterList(filterList);
-      ((CiviInputMeta) input).setKeyList(keyList);
-      ((CiviInputMeta) input).setOutputMap(hOutput);
-      ((CiviInputMeta)input).setFilterMap(hFilter);
-      dispose();
-      return true;
     }
-    
-    return false;
-  }
 
-  protected void preview() {
-    // Create the table input reader step...
     CiviInputMeta inputMeta = new CiviInputMeta();
     inputMeta.setCiviCrmRestUrl(wCiviCrmRestUrl.getText());
     inputMeta.setCiviCrmApiKey(wCiviCrmApiKey.getText());
     inputMeta.setCiviCrmSiteKey(wCiviCrmSiteKey.getText());
     inputMeta.setCiviCrmEntity(wCiviCrmEntity.getText());
-    try {
-      inputMeta.setCiviCrmPageSize(Integer.parseInt(wCiviCrmPageSize.getText()));
-    } catch (NumberFormatException e) {
-      // Valor por defecto
-      inputMeta.setCiviCrmPageSize(25);
-    }
+    inputMeta.setCiviCrmResultField(wCiviCrmResultField.getText());
+    inputMeta.setCiviCrmDebugMode(wCiviCrmDebugMode.getSelection());
+    inputMeta.setCiviCrmFields(cloneFields);
+    inputMeta.setCiviCrmKeyList(keyList);
+    inputMeta.setCiviCrmFilterList(filterList);
+    inputMeta.setCiviCrmFilterOperator(fOperatorList);
+    inputMeta.setCiviCrmOutputMap(hOutput);
+    inputMeta.setCiviCrmFilterMap(hFilter);
 
     try {
-      String restUrl = variables.environmentSubstitute(wCiviCrmRestUrl.getText());
-      String apiKey = variables.environmentSubstitute(wCiviCrmApiKey.getText());
-      String siteKey = variables.environmentSubstitute(wCiviCrmSiteKey.getText());
-      // String entity = wCiviCrmEntity.getText());
-
-      RestUtil crUtil = new RestUtil(restUrl, apiKey, siteKey, wCiviCrmEntity.getText());
-
-      HashMap<String, FieldAttrs> lFields = crUtil.getFieldLists(true);
-      inputMeta.setFields(lFields);
-
-      int nrKeys = tOutputFields.nrNonEmpty();
-
-      if (nrKeys == 0) {
-        throw new Exception(BaseMessages.getString(PKG, "CiviCrmStep.Exception.NoFieldsSelected"));
-      }
-
-      HashMap<String, String> hOutput = new HashMap<String, String>();
-
-      for (int i = 0; i < nrKeys; i++) {
-        TableItem item = tOutputFields.getNonEmpty(i);
-        if (item.getText(1) != null && !item.getText(1).equals("")) {
-          inputMeta.getKeyList().add(item.getText(1));
-          hOutput.put(item.getText(1), (item.getText(2) != null && !item.getText(2).equals("")) ? item.getText(2) : item.getText(1));
-        }
-      }
-
-      inputMeta.setOutputMap(hOutput);
-
-      nrKeys = tFilterFields.nrNonEmpty();
-
-      HashMap<String, String> hFilter = new HashMap<String, String>();
-      for (int i = 0; i < nrKeys; i++) {
-        TableItem item = tFilterFields.getNonEmpty(i);
-        hFilter.put(item.getText(1), item.getText(2));
-      }
-
-      inputMeta.setFilterMap(hFilter);
-
       TransMeta previewMeta = TransPreviewFactory.generatePreviewTransformation(transMeta, inputMeta, wStepname.getText());
 
-      EnterNumberDialog numberDialog = new EnterNumberDialog(shell, props.getDefaultPreviewSize(), BaseMessages.getString(PKG,
+      EnterNumberDialog numberDialog = new EnterNumberDialog(shell, Integer.parseInt(wCiviCrmPageSize.getText()), BaseMessages.getString(PKG,
           "CiviCrmDialog.Preview.Title"), BaseMessages.getString(PKG, "CiviCrmDialog.Preview.NumberOfRowsToPreview")); //$NON-NLS-1$ //$NON-NLS-2$
       int previewSize = numberDialog.open();
       if (previewSize > 0) {
+        inputMeta.setCiviCrmPageSize(previewSize);
         TransPreviewProgressDialog progressDialog = new TransPreviewProgressDialog(shell, previewMeta,
             new String[] { wStepname.getText() }, new int[] { previewSize });
         progressDialog.open();
@@ -758,4 +950,5 @@ public class CiviInputDialog extends CiviDialog implements StepDialogInterface {
       new ErrorDialog(shell, BaseMessages.getString(PKG, "System.Dialog.PreviewError.Title"), e.toString().split(":")[0], e);
     }
   }
+
 }

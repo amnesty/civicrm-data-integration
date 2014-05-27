@@ -20,7 +20,6 @@ import es.stratebi.civi.util.FieldAttrs;
 
 /*
  * 
- * 
  * Esta es la clase principal y es la que lleva la logica del plugin, tiene un metodo init llamado
  * al inicio para definir los valores de inicializacion del paso y luego internamente en la clase
  * BaseStep se hacen llamadas repetitivas al metodo processRow hasta que no tengan mas filas que
@@ -63,9 +62,11 @@ public abstract class CiviStep extends BaseStep implements StepInterface {
                 return null;
             }
 
-            FieldAttrs cf = ((CiviMeta) civiMeta).getFields().get(field);
+            FieldAttrs cf = ((CiviMeta) civiMeta).getCiviCrmFields().get(field);
 
-            int metaType = ((CiviMeta) civiMeta).getMetaInterfaceType(cf.getfType());
+            int metaType =  ValueMetaInterface.TYPE_STRING;
+            if (cf != null)
+               metaType = ((CiviMeta) civiMeta).getMetaInterfaceType(cf.getfType());
 
             switch (metaType) {
             case ValueMetaInterface.TYPE_INTEGER:

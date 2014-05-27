@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/KETTLE_LIBS"/>
-	<classpathentry kind="lib" path="/Kettle 4.4.0/libext/feeds/jdom.jar"/>
-	<classpathentry kind="lib" path="/Kettle 4.4.0/libswt/jface.jar"/>
-	<classpathentry kind="lib" path="G:/Herramientas/pdi-ce-4.4.0-stable/data-integration/lib/kettle-core.jar"/>
-	<classpathentry kind="lib" path="G:/Herramientas/pdi-ce-4.4.0-stable/data-integration/lib/kettle-db.jar"/>
-	<classpathentry kind="lib" path="G:/Herramientas/pdi-ce-4.4.0-stable/data-integration/lib/kettle-engine.jar"/>
-	<classpathentry kind="lib" path="G:/Herramientas/pdi-ce-4.4.0-stable/data-integration/lib/kettle-ui-swt.jar"/>
-	<classpathentry kind="lib" path="/Kettle 4.4.0/libext/log4j-1.2.16.jar"/>
-	<classpathentry kind="lib" path="/Kettle 4.4.0/libswt/win32/swt.jar"/>
 	<classpathentry kind="lib" path="lib/json-3.1.1.jar"/>
+	<classpathentry kind="lib" path="lib/kettle-core-4.4.0-GA.jar" sourcepath="/Kettle-4.4/src-core"/>
+	<classpathentry kind="lib" path="lib/jdom-1.1.jar"/>
+	<classpathentry kind="lib" path="lib/jface.jar"/>
+	<classpathentry kind="lib" path="lib/kettle-db-4.4.0-GA.jar"/>
+	<classpathentry kind="lib" path="lib/kettle-engine-4.4.0-GA.jar"/>
+	<classpathentry kind="lib" path="lib/kettle-ui-swt-4.4.0-GA.jar"/>
+	<classpathentry kind="lib" path="lib/log4j-1.2.15.jar"/>
+	<classpathentry kind="lib" path="lib/swt.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

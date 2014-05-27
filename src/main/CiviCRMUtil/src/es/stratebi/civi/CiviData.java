@@ -13,7 +13,6 @@ import es.stratebi.civi.util.JSONString;
 
 /*
  * 
- * 
  * Esta clase es la que mantiene los datos que se van a enviar hacia el paso que sigue. El truco que
  * hemos usado es crear una lista con todos aquellos valores que devueltos por el API de CIVICRM
  * para ir eliminandolos en cada llamado del m�todo readOneRow llamado por processRow.
@@ -21,6 +20,7 @@ import es.stratebi.civi.util.JSONString;
 public class CiviData extends BaseStepData implements StepDataInterface {
 
     public RowMetaInterface outputRowMeta;
+    public RowMetaInterface previousRowMeta;
 
     public HashMap<String, String> keyFields;
     public HashMap<String, String> outputField;

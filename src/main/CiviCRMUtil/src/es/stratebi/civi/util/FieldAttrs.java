@@ -4,7 +4,6 @@ import java.lang.reflect.Field;
 
 /*
  * 
- * 
  * Aqui defino todos los atributos que pudiera tener (que he encontrado) un campo retornado por
  * CIVICRM para evitarme el problema de saber a quien le pongo el valor retornado y hacer multiples
  * if he creado un mEtodo set(campo, valor) que usa Reflection y recibe el nombre del atributo y el

@@ -78,6 +78,7 @@ public class CiviOutputDialog extends CiviDialog implements StepDialogInterface 
   private Button wTestConnection;
 
   private Listener lsTestConnection;
+  private Label wlCiviCrmDebugMode;
 
   // constructor
   public CiviOutputDialog(Shell parent, Object in, TransMeta transMeta, String sname) {
@@ -220,6 +221,51 @@ public class CiviOutputDialog extends CiviDialog implements StepDialogInterface 
     fdCiviCrmApiKey.right = new FormAttachment(100, 0);
     wCiviCrmApiKey.setLayoutData(fdCiviCrmApiKey);
 
+    // CiviCrm JSON ResultField
+    Label wlCiviCrmResultField = new Label(gConnectionGroup, SWT.RIGHT);
+    wlCiviCrmResultField.setText(BaseMessages.getString(PKG, "CiviCrmDialog.ResultFieldName.Label"));
+    props.setLook(wlCiviCrmResultField);
+
+    FormData fdlCiviCrmApiResultField = new FormData();
+    fdlCiviCrmApiResultField.top = new FormAttachment(wCiviCrmApiKey, margin);
+    fdlCiviCrmApiResultField.left = new FormAttachment(0, 0);
+    fdlCiviCrmApiResultField.right = new FormAttachment(middle, -margin);
+    wlCiviCrmResultField.setLayoutData(fdlCiviCrmApiResultField);
+
+    wCiviCrmResultField = new TextVar(transMeta, gConnectionGroup, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+    wCiviCrmResultField.addModifyListener(lsMod);
+    wCiviCrmResultField.setToolTipText(BaseMessages.getString(PKG, "CiviCrmDialog.ResultFieldName.Tooltip"));
+    props.setLook(wCiviCrmResultField);
+
+    FormData fdCiviCrmApiResultField = new FormData();
+    fdCiviCrmApiResultField.top = new FormAttachment(wCiviCrmApiKey, margin);
+    fdCiviCrmApiResultField.left = new FormAttachment(middle, 0);
+    fdCiviCrmApiResultField.right = new FormAttachment(100, 0);
+    wCiviCrmResultField.setLayoutData(fdCiviCrmApiResultField);
+
+    // CiviCrm debug mode label
+    wlCiviCrmDebugMode = new Label(gConnectionGroup, SWT.RIGHT);
+    wlCiviCrmDebugMode.setText(BaseMessages.getString(PKG, "CiviCrmDialog.DebugMode.Label"));
+    props.setLook(wlCiviCrmDebugMode);
+
+    FormData fdlDebugMode = new FormData();
+    fdlDebugMode.top = new FormAttachment(wCiviCrmResultField, margin);
+    fdlDebugMode.left = new FormAttachment(0, 0);
+    fdlDebugMode.right = new FormAttachment(middle, -margin);
+    wlCiviCrmDebugMode.setLayoutData(fdlDebugMode);
+
+    // CiviCrm debug mode checkbox
+    wCiviCrmDebugMode = new Button(gConnectionGroup, SWT.CHECK);
+    wCiviCrmDebugMode.setToolTipText(BaseMessages.getString(PKG, "CiviCrmDialog.DebugMode.Tooltip"));
+    props.setLook(wCiviCrmDebugMode);
+
+    FormData fdCiviCrmdDebugMode = new FormData();
+    fdCiviCrmdDebugMode.right = new FormAttachment(wlCiviCrmDebugMode, 25, SWT.RIGHT);
+    fdCiviCrmdDebugMode.top = new FormAttachment(wCiviCrmResultField, margin);
+    fdCiviCrmdDebugMode.left = new FormAttachment(wlCiviCrmDebugMode, 5);
+
+    wCiviCrmDebugMode.setLayoutData(fdCiviCrmdDebugMode);
+
     // Test connection button
     wTestConnection = new Button(gConnectionGroup, SWT.PUSH);
     wTestConnection.setText(BaseMessages.getString(PKG, "CiviCrmDialog.TestConnection.Button")); //$NON-NLS-1$
@@ -229,12 +275,12 @@ public class CiviOutputDialog extends CiviDialog implements StepDialogInterface 
     wGetEntities.setText(BaseMessages.getString(PKG, "CiviCrmDialog.GetEntityList.Button")); //$NON-NLS-1$
 
     FormData fdGetEntities = new FormData();
-    fdGetEntities.top = new FormAttachment(wCiviCrmApiKey, margin);
+    fdGetEntities.top = new FormAttachment(wCiviCrmDebugMode, margin);
     fdGetEntities.right = new FormAttachment(100, 0);
     wGetEntities.setLayoutData(fdGetEntities);
 
     FormData fdTestConnection = new FormData();
-    fdTestConnection.top = new FormAttachment(wCiviCrmApiKey, margin);
+    fdTestConnection.top = new FormAttachment(wCiviCrmDebugMode, margin);
     fdTestConnection.right = new FormAttachment(wGetEntities, -margin);
     wTestConnection.setLayoutData(fdTestConnection);
 
@@ -350,12 +396,13 @@ public class CiviOutputDialog extends CiviDialog implements StepDialogInterface 
      *************************************************/
 
     int outputKeyWidgetCols = 2;
-    int outputKeyWidgetRows = (((CiviOutputMeta) input).getFields() != null ? ((CiviOutputMeta) input).getOutputMap().size() : 3);
+    int outputKeyWidgetRows = (((CiviOutputMeta) input).getCiviCrmFields() != null ? ((CiviOutputMeta) input).getCiviCrmOutputMap().size()
+        : 3);
 
     ColumnInfo[] ciFields = new ColumnInfo[outputKeyWidgetCols];
-    streamFieldColumn = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.FieldName"), ColumnInfo.COLUMN_TYPE_CCOMBO,
+    streamFieldColumn = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.StreamField"), ColumnInfo.COLUMN_TYPE_CCOMBO,
         new String[] {}, false);
-    outputFieldsColumn = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.FieldOutput"), ColumnInfo.COLUMN_TYPE_CCOMBO,
+    outputFieldsColumn = new ColumnInfo(BaseMessages.getString(PKG, "CiviCrmDialog.ColumnInfo.EntityField"), ColumnInfo.COLUMN_TYPE_CCOMBO,
         new String[] {}, false);
     ciFields[0] = streamFieldColumn;
     ciFields[1] = outputFieldsColumn;
@@ -457,10 +504,10 @@ public class CiviOutputDialog extends CiviDialog implements StepDialogInterface 
     super.getData();
 
     String comboValues[] = new String[0];
-    if (((CiviOutputMeta) input).getFields() != null) {
-      comboValues = new String[((CiviOutputMeta) input).getFields().size()];
+    if (((CiviOutputMeta) input).getCiviCrmFields() != null) {
+      comboValues = new String[((CiviOutputMeta) input).getCiviCrmFields().size()];
       int i = 0;
-      for (String cf : ((CiviOutputMeta) input).getFields().keySet()) {
+      for (String cf : ((CiviOutputMeta) input).getCiviCrmFields().keySet()) {
         comboValues[i++] = cf;
       }
       Arrays.sort(comboValues);
@@ -472,21 +519,18 @@ public class CiviOutputDialog extends CiviDialog implements StepDialogInterface 
      * modificaciones en los campos que llegan a este paso actualizar nuevamente
      * el listado de campo de salida
      */
-    if ((((CiviOutputMeta) input).getOutputMap() != null) && (((CiviOutputMeta) input).getOutputMap().size() > 0)) {
+    if ((((CiviOutputMeta) input).getCiviCrmOutputMap() != null) && (((CiviOutputMeta) input).getCiviCrmOutputMap().size() > 0)) {
       // Si hay elementos para filtrar entonces mostrarlos en la tabla
       int i = 0;
-      String[] streamFields = new String[((CiviOutputMeta) input).getOutputMap().size()];
-//      for (String cField : ((CiviOutputMeta) input).getOutputMap().keySet()) {
-      for (String cField : ((CiviOutputMeta) input).getKeyList()) {
+      String[] streamFields = new String[((CiviOutputMeta) input).getCiviCrmOutputMap().size()];
+      for (String cField : ((CiviOutputMeta) input).getCiviCrmKeyList()) {
         TableItem item = tOutputFields.table.getItem(i);
         item.setText(1, cField);
-        item.setText(2, ((CiviOutputMeta) input).getOutputMap().get(cField));
+        item.setText(2, ((CiviOutputMeta) input).getCiviCrmOutputMap().get(cField));
         streamFields[i++] = cField;
       }
 
       this.streamFieldColumn.setComboValues(streamFields);
-    } else {
-      // getInputFields(false);
     }
 
     this.outputFieldsColumn.setComboValues(comboValues);
@@ -500,54 +544,36 @@ public class CiviOutputDialog extends CiviDialog implements StepDialogInterface 
    * campos que admite la entidad, los cuales son desplegados en las tablas que
    * muestran los campos y filtros
    */
-  protected void getEntityFields() {
+  protected boolean getEntityFields() {
     try {
-      if (((CiviOutputMeta) input).getFields().size() > 0) {
+      if (((CiviOutputMeta) input).getCiviCrmFields().size() > 0) {
         MessageDialog.setDefaultImage(GUIResource.getInstance().getImageSpoon());
         boolean goOn = MessageDialog.openConfirm(shell, BaseMessages.getString(PKG, "CiviCrmDialog.DoMapping.ReplaceFields.Title"),
             BaseMessages.getString(PKG, "CiviCrmDialog.DoMapping.ReplaceFields.Msg"));
         if (!goOn) {
-          return;
+          return false;
         }
       }
 
       // Eliminamos los campos de salida y volvemos a actualizar la tabla con
-      // los campos
-      // de entrada mas los de la entidad seleccionada mapeando los que se
-      // llamen igual
+      // los campos de entrada mas los de la entidad seleccionada mapeando los
+      // que se llamen igual
+      tOutputFields.clearAll();
       tOutputFields.removeAll();
 
       if (prevFields != null) {
         prevFields.clear();
       }
+
+      activeEntity = wCiviCrmEntity.getText();
+      
+      //Obtenemos y llenamos la tabla con los campos que llegan del paso anterior
       prevFields = transMeta.getPrevStepFields(stepname);
       if (prevFields != null && !prevFields.isEmpty()) {
-        BaseStepDialog.getFieldsFromPrevious(prevFields, tOutputFields, 1, new int[] { 1, 2 }, new int[] {}, -1, -1, null);
+        BaseStepDialog.getFieldsFromPrevious(prevFields, tOutputFields, 1, new int[] { 1 }, new int[] {}, -1, -1, null);
         streamFieldColumn.setComboValues(prevFields.getFieldNames());
-
-        /*
-         * Verificamos que los elementos de salida siempre tengan un campo
-         * valido de CIVICRM asignado si lo tiene, en caso de no tenerlo se
-         * busca y se asigna si existe. Si lo tiene y no existe entonces se
-         * reemplaza por el campo asociado si lo hubiera con igual nombre
-         */
-        HashMap<String, FieldAttrs> lFields = ((CiviOutputMeta) input).getFields();
-
-        if (lFields != null && lFields.size() > 0) {
-          int nrKeys = tOutputFields.nrNonEmpty();
-          for (int i = 0; i < nrKeys; i++) {
-            TableItem item = tOutputFields.getNonEmpty(i);
-            String streamField = item.getText(1);
-            if (streamField != null && !streamField.equals(""))
-              if (lFields.get(streamField) != null) {
-                item.setText(2, streamField);
-              } else {
-                item.setText(2, "");
-              }
-          }
-        }
       }
-
+      
       String restUrl = variables.environmentSubstitute(wCiviCrmRestUrl.getText());
       String apiKey = variables.environmentSubstitute(wCiviCrmApiKey.getText());
       String siteKey = variables.environmentSubstitute(wCiviCrmSiteKey.getText());
@@ -555,31 +581,29 @@ public class CiviOutputDialog extends CiviDialog implements StepDialogInterface 
       RestUtil crUtil = new RestUtil(restUrl, apiKey, siteKey, "getfields", wCiviCrmEntity.getText());
 
       crUtil.setEntity(wCiviCrmEntity.getText());
-      HashMap<String, FieldAttrs> lFields = crUtil.getFieldLists(true);
-      ((CiviOutputMeta) input).setFields(lFields);
+      HashMap<String, FieldAttrs> fieldMap = crUtil.getFieldLists(true);
 
-      String[] comboValues = new String[lFields.size()];
+      String[] comboValues = new String[fieldMap.size()];
 
       int index = 0;
       // Actualizar campos de salida del plugin
-      for (FieldAttrs field : lFields.values()) {
+      for (FieldAttrs field : fieldMap.values()) {
         comboValues[index++] = field.getfFieldKey();
       }
 
+      this.outputFieldsColumn.setComboValues(this.comboFieldList);
+      
       // Verificamos que los elementos de salida siempre tengan un campo válido
-      // de CIVICRM
-      // asignado si lo tiene, en caso de no tenerlo se busca y se asigna si
-      // existe. Si lo
-      // tiene y no existe entonces se reemplaza por el campo asociado si lo
-      // hubiera ocn
-      // igual nombre
+      // de CIVICRM asignado si lo tiene, en caso de no tenerlo se busca y se
+      // asigna si existe. Si lo tiene y no existe entonces se reemplaza por
+      // el campo asociado si lo hubiera con igual nombre
       int nrKeys = tOutputFields.nrNonEmpty();
       for (int i = 0; i < nrKeys; i++) {
         TableItem item = tOutputFields.getNonEmpty(i);
         String streamField = item.getText(1);
         // String outputField = item.getText(2);
         if (streamField != null && !streamField.equals(""))
-          if (lFields.get(streamField) != null) {
+          if (fieldMap.get(streamField) != null) {
             item.setText(2, streamField);
           } else {
             item.setText(2, "");
@@ -596,14 +620,13 @@ public class CiviOutputDialog extends CiviDialog implements StepDialogInterface 
       new ErrorDialog(shell, BaseMessages.getString(PKG, "CiviCrmStep.Error.EntityListError"), e.toString().split(":")[0], e); //$NON-NLS-1$ //$NON-NLS-2$
       logBasic(BaseMessages.getString(PKG, "CiviCrmStep.Error.APIExecError", e.toString()));
     }
+    return true;
   }
-  
+
   protected boolean ok() {
-
     int nrKeys = tOutputFields.nrNonEmpty();
-    boolean matchFields = true;
 
-    HashMap<String, FieldAttrs> fields = ((CiviMeta) input).getFields();
+    HashMap<String, FieldAttrs> fields = ((CiviMeta) input).getCiviCrmFields();
     ArrayList<String> keyList = new ArrayList<String>();
     List<String> streamFields = Arrays.asList(streamFieldColumn.getComboValues());
 
@@ -612,54 +635,50 @@ public class CiviOutputDialog extends CiviDialog implements StepDialogInterface 
     for (int i = 0; i < nrKeys; i++) {
       TableItem item = tOutputFields.getNonEmpty(i);
       // Verificamos que los elementos de salida siempre tengan un campo
-      // seleccionado y luego si no hay un alias le ponemos el mismo nombre del
+      // seleccionado y luego si no hay un alias le ponemos el mismo nombre
+      // del
       // campo
-      
+
       if (item.getText(1) != null && !item.getText(1).equals("")) {
-        String streamField = item.getText(1); 
-        String fieldKey    = item.getText(2); 
-
-        matchFields = (streamFields.indexOf(streamField) != -1);
-        if (!matchFields) {
-          String msg = "";
-             msg = BaseMessages.getString(PKG, "CiviCrmStep.Error.StreamFieldNotMatch")
-             .replace("$1", streamField);
-          Exception e = new Exception();
-          new ErrorDialog(shell, BaseMessages.getString(PKG, "CiviCrmStep.Error.UnableFindField"), msg, e);
-          break;
-        }
-
-        matchFields = (fields.get(fieldKey) != null);
-        if (!matchFields) {
-          String msg = "";
-             msg = BaseMessages.getString(PKG, "CiviCrmStep.Error.FieldNotMatch")
-             .replace("$1", fieldKey)
-             .replace("$2", activeEntity);
-          Exception e = new Exception();
-          new ErrorDialog(shell, BaseMessages.getString(PKG, "CiviCrmStep.Error.UnableFindField"), msg, e);
-          break;
-        }
         keyList.add(item.getText(1));
         hOutput.put(item.getText(1), (item.getText(2) != null && !item.getText(2).equals("")) ? item.getText(2) : item.getText(1));
       }
     }
 
-    if (matchFields) {
-      stepname = wStepname.getText();
+    stepname = wStepname.getText();
 
-      ((CiviOutputMeta) input).setCiviCrmRestUrl(wCiviCrmRestUrl.getText());
-      ((CiviOutputMeta) input).setCiviCrmApiKey(wCiviCrmApiKey.getText());
-      ((CiviOutputMeta) input).setCiviCrmSiteKey(wCiviCrmSiteKey.getText());
-      ((CiviOutputMeta) input).setCiviCrmEntity(wCiviCrmEntity.getText());
+    ((CiviOutputMeta) input).setCiviCrmRestUrl(wCiviCrmRestUrl.getText());
+    ((CiviOutputMeta) input).setCiviCrmApiKey(wCiviCrmApiKey.getText());
+    ((CiviOutputMeta) input).setCiviCrmSiteKey(wCiviCrmSiteKey.getText());
+    ((CiviOutputMeta) input).setCiviCrmEntity(wCiviCrmEntity.getText());
+    ((CiviOutputMeta) input).setCiviCrmResultField(wCiviCrmResultField.getText());
+    ((CiviOutputMeta) input).setCiviCrmDebugMode(wCiviCrmDebugMode.getSelection());
 
-      ((CiviOutputMeta) input).setKeyList(keyList);
-      ((CiviOutputMeta) input).setOutputMap(hOutput);
-      dispose();
-      return true;
-    }
-    
-    return false;
+    ((CiviOutputMeta) input).setCiviCrmKeyList(keyList);
+    ((CiviOutputMeta) input).setCiviCrmOutputMap(hOutput);
+    dispose();
+    return true;
   }
 
+  protected void updatePreviousFields() {
+    try {
+      prevFields = transMeta.getPrevStepFields(stepname);
 
+      if (prevFields != null && !prevFields.isEmpty()) {
+        streamFieldColumn.setComboValues(prevFields.getFieldNames());
+        /*
+         * int nrKeys = tFilterFields.nrNonEmpty(); for (int i = 0; i < nrKeys;
+         * i++) { TableItem item = tFilterFields.getNonEmpty(i); String field =
+         * item.getText(1); item.setText(3, ""); if (field != null &&
+         * !field.equals("")) { for (int t = 0; t < prevFields.length; t++) { if
+         * (field.equalsIgnoreCase(prevFields[t])) { item.setText(3, field);
+         * break; } } } } } else { prevFields = null; int nrKeys =
+         * tFilterFields.nrNonEmpty(); for (int i = 0; i < nrKeys; i++) {
+         * TableItem item = tFilterFields.getNonEmpty(i); item.setText(3, ""); }
+         */
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 }

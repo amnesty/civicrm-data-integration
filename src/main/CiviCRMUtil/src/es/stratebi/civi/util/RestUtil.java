@@ -22,492 +22,520 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class RestUtil {
-    private String restUrl = "";
-    private String apiKey = "";
-    private String key = "";
-    private String action = "get";
-    private String fieldsAction = "getfields";
-    private String entity = "Contact";
-    private String options = "";
-    private int limit = 25;
-    private int offset = 0;
-    private boolean isFirst = true;
-    private boolean isError = false;
-    private BufferedWriter sockedWriter;
-    private BufferedReader socketReader;
-    private Socket civiSocket;
+  private String callUrl = "";
+  private String restUrl = "";
+  private String apiKey = "";
+  private String key = "";
+  private String action = "get";
+  private String fieldsAction = "getfields";
+  private String entity = "Contact";
+  private String options = "";
+  private int limit = 25;
+  private int offset = 0;
+  private boolean isFirst = true;
+  private boolean isError = false;
+  private boolean isDebug = false;
+  private BufferedWriter sockedWriter;
+  private BufferedReader socketReader;
+  private Socket civiSocket;
 
-    private HashMap<String, FieldAttrs> aFields = new HashMap<String, FieldAttrs>();
+  private HashMap<String, FieldAttrs> aFields = new HashMap<String, FieldAttrs>();
 
-    public RestUtil(String restUrl, String apiKey, String key, String entity) {
-        this.restUrl = restUrl;
-        this.apiKey = apiKey;
-        this.key = key;
-        this.entity = entity;
+  public RestUtil(String restUrl, String apiKey, String key, String entity) {
+    this.restUrl = restUrl;
+    this.apiKey = apiKey;
+    this.key = key;
+    this.entity = entity;
+  }
+
+  public RestUtil(String restUrl, String apiKey, String key, String action, String entity) {
+    this.restUrl = restUrl;
+    this.apiKey = apiKey;
+    this.key = key;
+    this.action = action;
+    this.entity = entity;
+  }
+
+  public String getRestUrl() {
+    return restUrl;
+  }
+
+  public void setRestUrl(String restUrl) {
+    this.restUrl = restUrl;
+  }
+
+  public String getApiKey() {
+    return apiKey;
+  }
+
+  public void setApiKey(String apiKey) {
+    this.apiKey = apiKey;
+  }
+
+  public String getKey() {
+    return key;
+  }
+
+  public void setKey(String key) {
+    this.key = key;
+  }
+
+  public String getAction() {
+    return action;
+  }
+
+  public void setAction(String action) {
+    this.action = action;
+  }
+
+  public String getFieldsAction() {
+    return fieldsAction;
+  }
+
+  public void setFieldsAction(String fieldsAction) {
+    this.fieldsAction = fieldsAction;
+  }
+
+  public String getEntity() {
+    return entity;
+  }
+
+  public void setEntity(String entity) {
+    this.entity = entity;
+  }
+
+  public String getOptions() {
+    return options;
+  }
+
+  public void setOptions(String options) {
+    this.options = options;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
+  }
+
+  public boolean isFirst() {
+    return isFirst;
+  }
+
+  public void setFirst(boolean isFirst) {
+    this.isFirst = isFirst;
+  }
+
+  public HashMap<String, FieldAttrs> getaFields() {
+    return aFields;
+  }
+
+  public void setaFields(HashMap<String, FieldAttrs> aFields) {
+    this.aFields = aFields;
+  }
+
+  public boolean isError() {
+    return isError;
+  }
+
+  public void setError(boolean isError) {
+    this.isError = isError;
+  }
+
+  public HttpURLConnection getHttpConnection(URL url) throws IOException {
+    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+    conn.setRequestMethod("GET");
+    conn.setRequestProperty("Accept", "application/json");
+
+    if (conn.getResponseCode() != 200) {
+      throw new RuntimeException("HTTP error: " + conn.getResponseCode());
     }
 
-    public RestUtil(String restUrl, String apiKey, String key, String action, String entity) {
-        this.restUrl = restUrl;
-        this.apiKey = apiKey;
-        this.key = key;
-        this.action = action;
-        this.entity = entity;
+    return conn;
+  }
+
+  public String getJSonString(HttpURLConnection conn) throws IOException {
+    String response = "";
+
+    InputStream input = conn.getInputStream();
+    InputStreamReader streamReader = new InputStreamReader(input);
+    BufferedReader br = new BufferedReader(streamReader);
+
+    String line = "";
+
+    while ((line = br.readLine()) != null) {
+      response = response.concat(line);
     }
 
-	public String getRestUrl() {
-		return restUrl;
-	}
+    return response;
+  }
 
-	public void setRestUrl(String restUrl) {
-		this.restUrl = restUrl;
-	}
+  public URL getUrl(String entity, String action, String params) throws MalformedURLException {
+    String urlString = "";
 
-	public String getApiKey() {
-		return apiKey;
-	}
+    urlString = restUrl + "?api_key=".concat(apiKey);
+    urlString = urlString + "&key=".concat(key);
 
-	public void setApiKey(String apiKey) {
-		this.apiKey = apiKey;
-	}
+    urlString = urlString.concat("&json=1");
+    urlString = urlString.concat("&debug=0");
+    urlString = urlString.concat("&version=3");
 
-	public String getKey() {
-		return key;
-	}
+    urlString = urlString + "&entity=".concat(entity);
+    urlString = urlString + "&action=".concat(action);
 
-	public void setKey(String key) {
-		this.key = key;
-	}
+    urlString = urlString + params;
 
-	public String getAction() {
-		return action;
-	}
+    URL url = new URL(urlString);
 
-	public void setAction(String action) {
-		this.action = action;
-	}
+    return url;
+  }
 
-	public String getFieldsAction() {
-		return fieldsAction;
-	}
+  public boolean isValidJSONObject(String json) {
+    boolean valid;
 
-	public void setFieldsAction(String fieldsAction) {
-		this.fieldsAction = fieldsAction;
-	}
-
-	public String getEntity() {
-		return entity;
-	}
-
-	public void setEntity(String entity) {
-		this.entity = entity;
-	}
-
-	public String getOptions() {
-		return options;
-	}
-
-	public void setOptions(String options) {
-		this.options = options;
-	}
-
-	public int getLimit() {
-		return limit;
-	}
-
-	public void setLimit(int limit) {
-		this.limit = limit;
-	}
-
-	public int getOffset() {
-		return offset;
-	}
-
-	public void setOffset(int offset) {
-		this.offset = offset;
-	}
-
-	public boolean isFirst() {
-		return isFirst;
-	}
-
-	public void setFirst(boolean isFirst) {
-		this.isFirst = isFirst;
-	}
-
-	public HashMap<String, FieldAttrs> getaFields() {
-		return aFields;
-	}
-
-	public void setaFields(HashMap<String, FieldAttrs> aFields) {
-		this.aFields = aFields;
-	}
-
-	public boolean isError() {
-		return isError;
-	}
-
-	public void setError(boolean isError) {
-		this.isError = isError;
-	}
-
-    public HttpURLConnection getHttpConnection(URL url) throws IOException {
-    	HttpURLConnection conn =  (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
-        conn.setRequestProperty("Accept", "application/json");
-
-        if (conn.getResponseCode() != 200) {
-            throw new RuntimeException("HTTP error: " + conn.getResponseCode());
-        }
-    	
-        return conn;
+    try {
+      new JSONObject(json);
+      valid = true;
+    } catch (JSONException e) {
+      valid = false;
     }
 
-    public String getJSonString(HttpURLConnection conn) throws IOException {
-        String response = "";
+    return valid;
+  }
 
-        InputStream input = conn.getInputStream();
-        InputStreamReader streamReader = new InputStreamReader(input);
-        BufferedReader br = new BufferedReader(streamReader);
+  public boolean isValidJSONArray(String json) {
+    boolean valid;
 
-        String line = "";
-
-        while ((line = br.readLine()) != null) {
-            response = response.concat(line);
-        }
-
-        return response;
+    try {
+      new JSONArray(json);
+      valid = true;
+    } catch (JSONException e) {
+      valid = false;
     }
 
-    public URL getUrl(String entity, String action, String params) throws MalformedURLException {
-        String urlString = "";
+    return valid;
+  }
 
-        urlString = restUrl + "?api_key=".concat(apiKey);
-        urlString = urlString + "&key=".concat(key);
+  public HashMap<String, FieldAttrs> getFieldLists(boolean reset) throws IOException, CiviCRMException {
+    if (reset)
+      getFields();
 
-        urlString = urlString.concat("&json=1");
-        urlString = urlString.concat("&debug=0");
-        urlString = urlString.concat("&version=3");
+    return aFields;
+  }
 
-        urlString = urlString + "&entity=".concat(entity);
-        urlString = urlString + "&action=".concat(action);
-        
-        urlString = urlString + params;
-        
-        URL url = new URL(urlString);
-        
-        return url;
-    }
-    
-    public boolean isValidJSONObject(String json) {
-        boolean valid;
+  private void getFields() throws IOException, CiviCRMException {
+    try {
+      String params = "&options[limit]=0";
 
-        try {
-            new JSONObject(json);
-            valid = true;
-        } catch (JSONException e) {
-            valid = false;
-        }
+      URL url = getUrl(this.entity, this.fieldsAction, params);
+      HttpURLConnection conn = getHttpConnection(url);
+      String json = getJSonString(conn);
 
-        return valid;
-    }
+      assert isValidJSONObject(json) : "String is not a valid JSON.";
 
-    public boolean isValidJSONArray(String json) {
-        boolean valid;
+      JSONObject response = new JSONObject(json);
 
-        try {
-            new JSONArray(json);
-            valid = true;
-        } catch (JSONException e) {
-            valid = false;
-        }
+      // Aqui debo chequear si hay un error de acceso
+      if (response.get("is_error").toString().equals("1")) {
+        throw new CiviCRMException("CiviCRM API Error: " + response.get("error_message").toString());
+      } else if (response.get("is_error").toString().equals("0") && response.get("count").toString().equals("0")) {
+        throw new CiviCRMException("CiviCRM Error: Entity [" + this.entity + "] has not fields or not exists ");
+      } else if (isValidJSONObject(response.get("values").toString())) {
+        JSONObject values = response.getJSONObject("values");
 
-        return valid;
-    }
+        @SuppressWarnings("unchecked")
+        Iterator<String> fieldIterator = values.keys();
 
-    public HashMap<String, FieldAttrs> getFieldLists(boolean reset) throws IOException, CiviCRMException {
-        if (reset) getFields();
-        
-        return aFields;
-    }
+        JSONObject jsonField = null;
 
-    private void getFields() throws IOException, CiviCRMException {
-        try {
-            String params = "&options[limit]=0";
+        while (fieldIterator.hasNext()) {
+          String fieldName = fieldIterator.next();
+          jsonField = values.getJSONObject(fieldName);
 
-            URL url = getUrl(this.entity, this.fieldsAction, params);
-			HttpURLConnection conn = getHttpConnection(url);
-			String json = getJSonString(conn);
+          @SuppressWarnings("unchecked")
+          Iterator<String> fieldsIterator = jsonField.keys();
+          FieldAttrs cf = new FieldAttrs();
+          cf.setfFieldKey(fieldName);
 
-            assert isValidJSONObject(json) : "String is not a valid JSON.";
+          while (fieldsIterator.hasNext()) {
+            String fName = fieldsIterator.next();
+            String fValue = jsonField.get(fName).toString();
 
-            JSONObject response = new JSONObject(json);
-
-        	// Aqui debo chequear si hay un error de acceso
-        	if (response.get("is_error").toString().equals("1")) {
-        		throw new CiviCRMException("CiviCRM API Error: " + response.get("error_message").toString());
-        	} else
-    		if (response.get("is_error").toString().equals("0") && response.get("count").toString().equals("0")) {
-        		throw new CiviCRMException("CiviCRM Error: Entity [" + this.entity + "] has not fields or not exists ");
-        	} else
-            if (isValidJSONObject(response.get("values").toString())) {
-                JSONObject values = response.getJSONObject("values");
-
-                @SuppressWarnings("unchecked")
-                Iterator<String> fieldIterator = values.keys();
-
-                JSONObject jsonField = null;
-
-                while (fieldIterator.hasNext()) {
-                    String fieldName = fieldIterator.next();
-                    jsonField = values.getJSONObject(fieldName);
-
-                    @SuppressWarnings("unchecked")
-                    Iterator<String> fieldsIterator = jsonField.keys();
-                    FieldAttrs cf = new FieldAttrs();
-                    cf.setfFieldKey(fieldName);
-
-                    while (fieldsIterator.hasNext()) {
-                        String fName = fieldsIterator.next();
-                        String fValue = jsonField.get(fName).toString();
-
-                        try {
-                            cf.set("f" + fName.substring(0, 1).toUpperCase() + fName.substring(1).replace(".", "_"), fValue);
-                        } catch (Exception e) {
-                            // e.printStackTrace();
-                        }
-                    }
-                    aFields.put(fieldName, cf);
-                }
-            } else if (isValidJSONArray(response.get("values").toString())) {
-                JSONArray values = response.getJSONArray("values");
-
-                for (int i = 0; i <= values.length() - 1; i++) {
-                    //System.out.println(values.get(i).toString());
-                }
-            } else {
-                System.out.println("Error!");
+            try {
+              cf.set("f" + fName.substring(0, 1).toUpperCase() + fName.substring(1).replace(".", "_"), fValue);
+            } catch (Exception e) {
+              // e.printStackTrace();
             }
-        } catch (JSONException e) {
+          }
+          aFields.put(fieldName, cf);
+        }
+      } else if (isValidJSONArray(response.get("values").toString())) {
+        JSONArray values = response.getJSONArray("values");
+
+        for (int i = 0; i <= values.length() - 1; i++) {
+          // System.out.println(values.get(i).toString());
+        }
+      } else {
+        System.out.println("Error!");
+      }
+    } catch (JSONException e) {
+      e.printStackTrace();
+    } catch (MalformedURLException e1) {
+      e1.printStackTrace();
+    }
+  }
+
+  public ArrayList<String> getEntityList() throws IOException, JSONException, CiviCRMException {
+    ArrayList<String> entityList = new ArrayList<String>();
+    URL url = getUrl("Entity", "get", "");
+    HttpURLConnection conn = getHttpConnection(url);
+    String json = getJSonString(conn);
+
+    assert isValidJSONObject(json) : "String is not a valid JSON.";
+
+    JSONObject response = new JSONObject(json);
+
+    // Aqui debo chequear si hay un error de acceso
+    if (response.get("is_error").toString().equals("1")) {
+      throw new CiviCRMException("CiviCRM API Error: " + response.get("error_message").toString());
+    } else if (isValidJSONArray(response.get("values").toString())) {
+      JSONArray values = response.getJSONArray("values");
+
+      for (int i = 0; i <= values.length() - 1; i++) {
+        entityList.add(values.get(i).toString());
+      }
+    } else {
+      System.out.println("Error!");
+    }
+    return entityList;
+  }
+
+  public List<JSONString> getNextValues() throws IOException, JSONException, CiviCRMException {
+    ArrayList<JSONString> jsonObjectList = new ArrayList<JSONString>();
+    this.offset = (this.isFirst ? 0 : this.offset + this.limit);
+    this.isFirst = false;
+    String params = (this.options.equals("") ? "" : this.options) + "&options[limit]=" + this.limit + "&options[offset]=" + this.offset
+        + (isDebug ? "&debug=1" : "");
+
+    URL url = getUrl(entity, action, params);
+    this.callUrl = "GET: " + url.toString();
+    HttpURLConnection conn = getHttpConnection(url);
+    String json = getJSonString(conn);
+
+    assert isValidJSONObject(json) : "String is not a valid JSON.";
+
+    JSONObject response = new JSONObject(json);
+
+    // Aqui debo chequear si hay un error de acceso
+    if (response.get("is_error").toString().equals("1")) {
+      throw new CiviCRMException("CiviCRM API Error: " + response.get("error_message").toString());
+    } else if (isValidJSONObject(response.get("values").toString())) {
+      JSONObject values = response.getJSONObject("values");
+
+      @SuppressWarnings("unchecked")
+      Iterator<String> keysIterator = values.keys();
+
+      Object jsonObject = null;
+
+      int index = this.offset;
+      // Chequear si el contenido devuelto en values es un conjunto de campos
+      // {k1:v1, k2:v2,...} de un objeto o un campo llave + un objeto
+      // id1:{k1:v1, k2:v2,...}
+      String k1 = (String) values.keys().next();
+      if (!isValidJSONObject(values.getString(k1))) {
+        jsonObject = values.get(k1);
+        JSONString cjs = new JSONString(values, index++, "-1");
+        jsonObjectList.add(cjs);
+      } else {
+        while (keysIterator.hasNext()) {
+          String jsonObjectKey = keysIterator.next();
+          try {
+            // Object jsonValue = values.getJSONObject(jsonObjectKey);
+            jsonObject = values.get(jsonObjectKey);
+            JSONString cjs = new JSONString(jsonObject, index++, jsonObjectKey);
+            jsonObjectList.add(cjs);
+          } catch (Exception e) {
             e.printStackTrace();
-        } catch (MalformedURLException e1) {
-            e1.printStackTrace();
+          }
         }
+      }
+    } else if (isValidJSONArray(response.get("values").toString())) {
+      JSONArray values = response.getJSONArray("values");
+
+      for (int i = 0; i <= values.length() - 1; i++) {
+        // System.out.println(values.get(i).toString());
+      }
+    } else {
+      System.out.println("Error!");
     }
-    
-    public ArrayList<String> getEntityList() throws IOException, JSONException, CiviCRMException {
-    	ArrayList<String> entityList = new ArrayList<String>();
-    	URL url = getUrl("Entity", "get", "");
-    	HttpURLConnection conn = getHttpConnection(url);
-    	String json = getJSonString(conn);
+    return jsonObjectList;
+  }
 
-    	assert isValidJSONObject(json) : "String is not a valid JSON.";
+  public String[] preparePostUrlString(String entity, String action, String params) {
+    String[] preparedUrl = new String[2];
 
-    	JSONObject response = new JSONObject(json);
+    preparedUrl[0] = restUrl;
 
-    	// Aqui debo chequear si hay un error de acceso
-    	if (response.get("is_error").toString().equals("1")) {
-    		throw new CiviCRMException("CiviCRM API Error: " + response.get("error_message").toString());
-    	} else
-    	if (isValidJSONArray(response.get("values").toString())) {
-    		JSONArray values = response.getJSONArray("values");
+    preparedUrl[1] = "api_key=".concat(apiKey);
+    preparedUrl[1] = preparedUrl[1] + "&key=".concat(key);
 
-    		for (int i = 0; i <= values.length() - 1; i++) {
-    			entityList.add(values.get(i).toString());
-    		}
-    	} else {
-    		System.out.println("Error!");
-    	}
-        return entityList;
+    preparedUrl[1] = preparedUrl[1].concat("&json=1");
+    preparedUrl[1] = preparedUrl[1].concat("&debug=1");
+    preparedUrl[1] = preparedUrl[1].concat("&version=3");
+
+    preparedUrl[1] = preparedUrl[1] + "&entity=".concat(entity);
+    preparedUrl[1] = preparedUrl[1] + "&action=".concat(action);
+
+    preparedUrl[1] = preparedUrl[1] + params;
+
+    return preparedUrl;
+  }
+
+  public String putValues(String params, String filters, boolean closeConnection) {
+    boolean error = false;
+    String msg = "";
+    try {
+      // Ver lor filtros para la actualizacion
+      String apiUrlString[] = preparePostUrlString(entity, action, params);
+      /*
+       * Estos dos metodos hacen lo mismo, depende del gusto el que se use, creo
+       * que es mejor usando socket pues es mas simple tener la traza completa
+       * para depurar y mantener la conexion abierta hasta finalizar
+       */
+
+      msg = tryPostWithUrl(apiUrlString);
+      // String result = tryPostWithSocket(apiUrlString, closeConnection);
+      // Si aparece la cadena "error_code" se ha producido un error, hay que
+      // verificar otros
+      // casos con la variable is_error
+
+    } catch (Exception e) {
+      e.printStackTrace();
     }
+    return msg;
+  }
 
-    public List<JSONString> getNextValues() throws IOException, JSONException, CiviCRMException {
-    	ArrayList<JSONString> jsonObjectList = new ArrayList<JSONString>();
-    	this.offset = (this.isFirst ? 0 : this.offset + this.limit);
-    	this.isFirst = false;
-    	String params = (this.options.equals("") ? "" : this.options) + "&options[limit]=" + this.limit
-    			+ "&options[offset]=" + this.offset;
-
-    	URL url = getUrl(entity, action, params);
-    	HttpURLConnection conn = getHttpConnection(url);
-    	String json = getJSonString(conn);
-
-
-    	assert isValidJSONObject(json) : "String is not a valid JSON.";
-
-    	JSONObject response = new JSONObject(json);
-
-    	// Aqui debo chequear si hay un error de acceso
-    	if (response.get("is_error").toString().equals("1")) {
-    		throw new CiviCRMException("CiviCRM API Error: " + response.get("error_message").toString());
-    	} else
-    	if (isValidJSONObject(response.get("values").toString())) {
-    		JSONObject values = response.getJSONObject("values");
-
-    		@SuppressWarnings("unchecked")
-    		Iterator<String> keysIterator = values.keys();
-
-    		JSONObject jsonObject = null;
-
-    		int index = this.offset;
-    		while (keysIterator.hasNext()) {
-    			String jsonObjectKey = keysIterator.next();
-    			jsonObject = values.getJSONObject(jsonObjectKey);
-    			JSONString cjs = new JSONString(jsonObject, index++, jsonObjectKey);
-    			jsonObjectList.add(cjs);
-    		}
-    	} else if (isValidJSONArray(response.get("values").toString())) {
-    		JSONArray values = response.getJSONArray("values");
-
-    		for (int i = 0; i <= values.length() - 1; i++) {
-    			//System.out.println(values.get(i).toString());
-    		}
-    	} else {
-    		System.out.println("Error!");
-    	}
-        return jsonObjectList;
+  public void closeSocketConnection() {
+    try {
+      if (socketReader != null) {
+        socketReader.close();
+      }
+      if (sockedWriter != null) {
+        sockedWriter.close();
+      }
+      if (civiSocket != null && !civiSocket.isClosed()) {
+        civiSocket.close();
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
     }
+  }
 
+  public String tryPostWithSocket(String params[], boolean closeConnection) {
+    String postResult = "";
+    try {
+      // Construct data
+      String data = params[1];
+      URL url = new URL(params[0]);
 
-    public String[] preparePostUrlString(String entity, String action, String params) {
-        String[] preparedUrl = new String[2];
+      // Create a socket to the host
+      String hostname = url.getHost();
+      int port = url.getPort() == -1 ? 80 : url.getPort();
+      InetAddress addr = InetAddress.getByName(hostname);
+      if (!closeConnection && (civiSocket == null || civiSocket.isClosed())) {
+        civiSocket = new Socket(addr, port);
+      }
 
-        preparedUrl[0] = restUrl;
+      // Send header
+      String path = url.getPath();
+      if (!closeConnection && sockedWriter == null) {
+        sockedWriter = new BufferedWriter(new OutputStreamWriter(civiSocket.getOutputStream(), "UTF8"));
+      }
 
-        
-        preparedUrl[1] = "api_key=".concat(apiKey);
-        preparedUrl[1] = preparedUrl[1] + "&key=".concat(key);
+      sockedWriter.write("POST " + path + " HTTP/1.0\r\n");
+      sockedWriter.write("Content-Length: " + data.length() + "\r\n");
+      sockedWriter.write("Content-Type: application/x-www-form-urlencoded\r\n");
+      sockedWriter.write("\r\n");
 
-        preparedUrl[1] = preparedUrl[1].concat("&json=1");
-        preparedUrl[1] = preparedUrl[1].concat("&debug=1");
-        preparedUrl[1] = preparedUrl[1].concat("&version=3");
+      sockedWriter.write(data);
+      sockedWriter.flush();
 
-        preparedUrl[1] = preparedUrl[1] + "&entity=".concat(entity);
-        preparedUrl[1] = preparedUrl[1] + "&action=".concat(action);
-        
-        preparedUrl[1] = preparedUrl[1] + params;
+      // Get the response
+      if (!closeConnection && socketReader == null) {
+        socketReader = new BufferedReader(new InputStreamReader(civiSocket.getInputStream()));
+      }
+      String line;
+      while ((line = socketReader.readLine()) != null) {
+        postResult += line + "\n";
+      }
 
-        return preparedUrl;
+      if (closeConnection) {
+        sockedWriter.close();
+        socketReader.close();
+        civiSocket.close();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
     }
+    return postResult;
+  }
 
-    public String putValues(String params, String filters, boolean closeConnection) {
-        boolean error = false;
-        String msg = "";
-        try {
-            // Ver lor filtros para la actualizacion
-            String apiUrlString[] = preparePostUrlString(entity, action, params);
-            /*
-             * Estos dos metodos hacen lo mismo, depende del gusto el que se use, creo que es mejor
-             * usando socket pues es mas simple tener la traza completa para depurar y mantener la
-             * conexion abierta hasta finalizar
-             */
+  public String tryPostWithUrl(String params[]) {
+    String postResult = "";
+    try {
+      // Construct data
+      String data = params[1];
+      URL url = new URL(params[0]);
 
-            msg = tryPostWithUrl(apiUrlString);
-            //String result = tryPostWithSocket(apiUrlString, closeConnection);
-            // Si aparece la cadena "error_code" se ha producido un error, hay que verificar otros
-            // casos con la variable is_error
-            error = (msg.indexOf("error_code") >= 0) || (msg.indexOf("error_message") >= 0);
+      data = data + (isDebug ? "&debug=1" : "");
+      this.callUrl = "POST: " + url.toString() + "\nSend data: " + data;
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        if (!error) {
-          msg = "";
-        }
-        return msg;
+      // Send data
+      URLConnection conn = url.openConnection();
+      conn.setDoOutput(true);
+      OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
+
+      wr.write(data);
+      wr.flush();
+
+      // Get the response
+      BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+      String line;
+      while ((line = rd.readLine()) != null) {
+        postResult += line + "\n";
+      }
+      wr.close();
+      rd.close();
+    } catch (Exception e) {
+      e.printStackTrace();
     }
+    return postResult;
+  }
 
-    public void closeSocketConnection() {
-        try {
-            if (socketReader != null) {
-                socketReader.close();
-            }
-            if (sockedWriter != null) {
-                sockedWriter.close();
-            }
-            if (civiSocket != null && !civiSocket.isClosed()) {
-                civiSocket.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+  public boolean isDebug() {
+    return isDebug;
+  }
 
-    public String tryPostWithSocket(String params[], boolean closeConnection) {
-        String postResult = "";
-        try {
-            // Construct data
-            String data = params[1];
-            URL url = new URL(params[0]);
+  public void setDebug(boolean isDebug) {
+    this.isDebug = isDebug;
+  }
 
-            // Create a socket to the host
-            String hostname = url.getHost();
-            int port = url.getPort() == -1 ? 80 : url.getPort();
-            InetAddress addr = InetAddress.getByName(hostname);
-            if (!closeConnection && (civiSocket == null || civiSocket.isClosed())) {
-                civiSocket = new Socket(addr, port);
-            }
+  public String getCallUrl() {
+    return callUrl;
+  }
 
-            // Send header
-            String path = url.getPath();
-            if (!closeConnection && sockedWriter == null) {
-                sockedWriter = new BufferedWriter(new OutputStreamWriter(civiSocket.getOutputStream(), "UTF8"));
-            }
-
-            sockedWriter.write("POST " + path + " HTTP/1.0\r\n");
-            sockedWriter.write("Content-Length: " + data.length() + "\r\n");
-            sockedWriter.write("Content-Type: application/x-www-form-urlencoded\r\n");
-            sockedWriter.write("\r\n");
-
-            sockedWriter.write(data);
-            sockedWriter.flush();
-
-            // Get the response
-            if (!closeConnection && socketReader == null) {
-                socketReader = new BufferedReader(new InputStreamReader(civiSocket.getInputStream()));
-            }
-            String line;
-            while ((line = socketReader.readLine()) != null) {
-                postResult += line + "\n";
-            }
-
-            if (closeConnection) {
-                sockedWriter.close();
-                socketReader.close();
-                civiSocket.close();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return postResult;
-    }
-    
-    public String tryPostWithUrl(String params[]) {
-        String postResult = "";
-        try {
-            // Construct data
-            String data = params[1];
-            URL url = new URL(params[0]);
-
-            // Send data
-            URLConnection conn = url.openConnection();
-            conn.setDoOutput(true);
-            OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
-
-            wr.write(data);
-            wr.flush();
-
-            // Get the response
-            BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            String line;
-            while ((line = rd.readLine()) != null) {
-                postResult += line + "\n";
-            }
-            wr.close();
-            rd.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return postResult;
-    }
+  public void setCallUrl(String callUrl) {
+    this.callUrl = callUrl;
+  }
 
 }

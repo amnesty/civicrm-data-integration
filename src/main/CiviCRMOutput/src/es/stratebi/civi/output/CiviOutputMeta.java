@@ -1,6 +1,10 @@
 package es.stratebi.civi.output;
 
 import org.eclipse.swt.widgets.Shell;
+import org.pentaho.di.core.row.RowMetaInterface;
+import org.pentaho.di.core.row.ValueMeta;
+import org.pentaho.di.core.row.ValueMetaInterface;
+import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransMeta;
 import org.pentaho.di.trans.step.StepDataInterface;
@@ -32,5 +36,13 @@ public class CiviOutputMeta extends CiviMeta implements StepMetaInterface {
   public StepDataInterface getStepData() {
     return new CiviOutputData();
   }
-
+  
+  public void getFields(RowMetaInterface r, String origin, RowMetaInterface[] info, StepMeta nextStep, VariableSpace space) {
+//    super.getFields(r, origin, info, nextStep, space);
+    if (civiCrmResultField != null && !civiCrmResultField.equals("")) {
+      ValueMetaInterface v = new ValueMeta(civiCrmResultField, ValueMetaInterface.TYPE_STRING);
+      v.setOrigin(origin);
+      r.addValueMeta(v);
+    }
+  }
 }

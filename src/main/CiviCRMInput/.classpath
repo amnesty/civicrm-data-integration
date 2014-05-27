@@ -3,14 +3,15 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/CiviCRMUtil"/>
-	<classpathentry kind="lib" path="/Kettle 4.4.0/libext/feeds/jdom.jar"/>
-	<classpathentry kind="lib" path="/Kettle 4.4.0/libswt/jface.jar"/>
-	<classpathentry kind="lib" path="G:/Herramientas/pdi-ce-4.4.0-stable/data-integration/lib/kettle-core.jar"/>
-	<classpathentry kind="lib" path="G:/Herramientas/pdi-ce-4.4.0-stable/data-integration/lib/kettle-db.jar"/>
-	<classpathentry kind="lib" path="G:/Herramientas/pdi-ce-4.4.0-stable/data-integration/lib/kettle-engine.jar"/>
-	<classpathentry kind="lib" path="G:/Herramientas/pdi-ce-4.4.0-stable/data-integration/lib/kettle-ui-swt.jar"/>
-	<classpathentry kind="lib" path="/Kettle 4.4.0/libext/log4j-1.2.16.jar"/>
-	<classpathentry kind="lib" path="/Kettle 4.4.0/libswt/win32/swt.jar"/>
-	<classpathentry kind="lib" path="lib/json-3.1.1.jar"/>
+	<classpathentry kind="lib" path="/home/manuel/Proyectos/Eclipse/CiviCRMUtil/lib/jdom-1.1.jar"/>
+	<classpathentry kind="lib" path="/home/manuel/Proyectos/Eclipse/CiviCRMUtil/lib/jface.jar"/>
+	<classpathentry kind="lib" path="/home/manuel/Proyectos/Eclipse/CiviCRMUtil/lib/json-3.1.1.jar"/>
+	<classpathentry kind="lib" path="/home/manuel/Proyectos/Eclipse/CiviCRMUtil/lib/kettle-core-4.4.0-GA.jar"/>
+	<classpathentry kind="lib" path="/home/manuel/Proyectos/Eclipse/CiviCRMUtil/lib/kettle-db-4.4.0-GA.jar"/>
+	<classpathentry kind="lib" path="/home/manuel/Proyectos/Eclipse/CiviCRMUtil/lib/kettle-engine-4.4.0-GA.jar"/>
+	<classpathentry kind="lib" path="/home/manuel/Proyectos/Eclipse/CiviCRMUtil/lib/kettle-ui-swt-4.4.0-GA.jar" sourcepath="/Kettle-4.4/src-ui"/>
+	<classpathentry kind="lib" path="/home/manuel/Proyectos/Eclipse/CiviCRMUtil/lib/log4j-1.2.15.jar"/>
+	<classpathentry kind="lib" path="/home/manuel/Proyectos/Eclipse/CiviCRMUtil/lib/swt.jar"/>
+	<classpathentry kind="lib" path="swing2swt.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

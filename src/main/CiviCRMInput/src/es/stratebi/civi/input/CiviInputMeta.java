@@ -1,5 +1,8 @@
 package es.stratebi.civi.input;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,6 +15,10 @@ import org.pentaho.di.core.database.DatabaseMeta;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.exception.KettleValueException;
 import org.pentaho.di.core.exception.KettleXMLException;
+import org.pentaho.di.core.row.RowMetaInterface;
+import org.pentaho.di.core.row.ValueMeta;
+import org.pentaho.di.core.row.ValueMetaInterface;
+import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.repository.ObjectId;
@@ -30,8 +37,11 @@ import es.stratebi.civi.CiviMeta;
 public class CiviInputMeta extends CiviMeta implements StepMetaInterface {
 
   protected Integer civiCrmPageSize;
-  protected HashMap<String, String> filterMap = new HashMap<String, String>();
-  protected ArrayList<String> filterList = new ArrayList<String>();
+  protected boolean hasPreviousStep = false;
+  protected HashMap<String, String> civiCrmFilterMap = new HashMap<String, String>();
+  protected ArrayList<String> civiCrmFilterList = new ArrayList<String>();
+  protected ArrayList<String> civiCrmFilterOperator = new ArrayList<String>();
+  protected ArrayList<String> civiCrmPrevFields = new ArrayList<String>();
 
   public CiviInputMeta() {
     super();
@@ -54,9 +64,9 @@ public class CiviInputMeta extends CiviMeta implements StepMetaInterface {
     // field by field copy is default
     CiviInputMeta retval = (CiviInputMeta) super.clone();
 
-    retval.filterMap = new HashMap<String, String>();
-    for (String kField : filterMap.keySet()) {
-      retval.filterMap.put(new String(kField), new String(filterMap.get(kField)));
+    retval.civiCrmFilterMap = new HashMap<String, String>();
+    for (String kField : civiCrmFilterMap.keySet()) {
+      retval.civiCrmFilterMap.put(new String(kField), new String(civiCrmFilterMap.get(kField)));
     }
     return retval;
   }
@@ -73,21 +83,45 @@ public class CiviInputMeta extends CiviMeta implements StepMetaInterface {
     StringBuffer retval = new StringBuffer(150);
     retval.append(xml);
 
-    for (String filterKey : filterList) {
+    retval.append("    ").append(XMLHandler.addTagValue("PageSize", civiCrmPageSize));
+    retval.append("    ").append(XMLHandler.addTagValue("hasPreviousStep", Boolean.toString(hasPreviousStep)));
+    
+    for (String filterKey : civiCrmFilterList) {
       retval.append("      <filter-key>").append(filterKey).append("</filter-key>").append(Const.CR);
     }
 
     retval.append("      <filter>").append(Const.CR);
-    for (String fKey : filterMap.keySet()) {
-      retval.append("        ").append(XMLHandler.addTagValue(fKey, filterMap.get(fKey)));
+    for (String fKey : civiCrmFilterMap.keySet()) {
+      retval.append("        ").append(XMLHandler.addTagValue(fKey, civiCrmFilterMap.get(fKey)));
     }
     retval.append("      </filter>").append(Const.CR);
+
+    for (String field : civiCrmPrevFields) {
+      retval.append("      <previous-field>").append(field).append("</previous-field>").append(Const.CR);
+    }
+
+    for (String field : civiCrmFilterOperator) {
+      try {
+        retval.append("      <filter-operator>").append(URLEncoder.encode(field, "UTF8")).append("</filter-operator>").append(Const.CR);
+      } catch (UnsupportedEncodingException e) {
+        e.printStackTrace();
+      }
+    }
 
     return retval.toString();
   }
 
-  public void loadXML(Node stepnode, List<DatabaseMeta> databases, Map<String, Counter> counters) throws KettleXMLException {
+  public void getFields(RowMetaInterface r, String origin, RowMetaInterface[] info, StepMeta nextStep, VariableSpace space) {
+    super.getFields(r, origin, info, nextStep, space);
+    
+    if (civiCrmResultField != null && !civiCrmResultField.equals("")) {
+      ValueMetaInterface v = new ValueMeta(civiCrmResultField, ValueMetaInterface.TYPE_STRING);
+      v.setOrigin(origin);
+      r.addValueMeta(v);
+    }
+  }
 
+  public void loadXML(Node stepnode, List<DatabaseMeta> databases, Map<String, Counter> counters) throws KettleXMLException {
     try {
 
       super.loadXML(stepnode, databases, counters);
@@ -98,10 +132,12 @@ public class CiviInputMeta extends CiviMeta implements StepMetaInterface {
         civiCrmPageSize = 25;
       }
       civiCrmPageSize = (civiCrmPageSize == null) ? 25 : civiCrmPageSize;
-
+      String s = XMLHandler.getTagValue(stepnode, "hasPreviousStep");
+      hasPreviousStep = Boolean.parseBoolean(s);
+      
       int totalNodes = 0;
 
-      filterList = new ArrayList<String>();
+      civiCrmFilterList = new ArrayList<String>();
 
       totalNodes = XMLHandler.countNodes(stepnode, "filter-key");
 
@@ -109,23 +145,53 @@ public class CiviInputMeta extends CiviMeta implements StepMetaInterface {
         try {
           // Extrayendo y actualizando el valor del campo
           Node node = XMLHandler.getSubNodeByNr(stepnode, "filter-key", i);
-          String entityName = XMLHandler.getNodeValue(node);
-          filterList.add(entityName);
+          String filterName = XMLHandler.getNodeValue(node);
+          civiCrmFilterList.add(filterName);
         } catch (IllegalArgumentException e) {
           e.printStackTrace();
         }
       }
 
-      filterMap = new HashMap<String, String>();
+      civiCrmFilterMap = new HashMap<String, String>();
 
       Node fieldNode = XMLHandler.getNodes(stepnode, "filter").get(0);
       // Iterando por los campos de la clase
-      for (String f : fields.keySet()) {
+      for (String f : civiCrmFilterList) {
         try {
           // Extrayendo y actualizando el valor del campo
           String fValue = XMLHandler.getTagValue(fieldNode, f);
           if (fValue != null)
-            filterMap.put(f, (fValue != null) ? fValue : "");
+            civiCrmFilterMap.put(f, (fValue != null) ? fValue : "");
+        } catch (IllegalArgumentException e) {
+          e.printStackTrace();
+        }
+      }
+
+      civiCrmPrevFields = new ArrayList<String>();
+
+      totalNodes = XMLHandler.countNodes(stepnode, "previous-field");
+
+      for (int i = 0; i < totalNodes; i++) {
+        try {
+          // Extrayendo y actualizando el valor del campo
+          Node node = XMLHandler.getSubNodeByNr(stepnode, "previous-field", i);
+          String fieldName = XMLHandler.getNodeValue(node);
+          civiCrmPrevFields.add(fieldName);
+        } catch (IllegalArgumentException e) {
+          e.printStackTrace();
+        }
+      }
+
+      civiCrmFilterOperator = new ArrayList<String>();
+
+      totalNodes = XMLHandler.countNodes(stepnode, "filter-operator");
+
+      for (int i = 0; i < totalNodes; i++) {
+        try {
+          // Extrayendo y actualizando el valor del campo
+          Node node = XMLHandler.getSubNodeByNr(stepnode, "filter-operator", i);
+          String fieldName = URLDecoder.decode(XMLHandler.getNodeValue(node), "UTF8");
+          civiCrmFilterOperator.add(fieldName);
         } catch (IllegalArgumentException e) {
           e.printStackTrace();
         }
@@ -139,22 +205,37 @@ public class CiviInputMeta extends CiviMeta implements StepMetaInterface {
   public void readRep(Repository rep, ObjectId id_step, List<DatabaseMeta> databases, Map<String, Counter> counters) throws KettleException {
     try {
       super.readRep(rep, id_step, databases, counters);
-      
-      civiCrmPageSize = (int) rep.getStepAttributeInteger(id_step, "civiCrmPageSize");
 
+      civiCrmPageSize = (int) rep.getStepAttributeInteger(id_step, "civiCrmPageSize");
+      hasPreviousStep = rep.getStepAttributeBoolean(id_step, "civiCrmPageSize");
+      
+      civiCrmFilterList = new ArrayList<String>();
       int nFields = rep.countNrStepAttributes(id_step, "filterKey");
       for (int i = 0; i < nFields; i++) {
         String cf = rep.getStepAttributeString(id_step, i, "filterKey");
-        filterList.add(cf);
+        civiCrmFilterList.add(cf);
       }
 
-      filterMap = new HashMap<String, String>();
+      civiCrmFilterMap = new HashMap<String, String>();
       nFields = rep.countNrStepAttributes(id_step, "filter");
       for (int i = 0; i < nFields; i++) {
         String[] cf = rep.getStepAttributeString(id_step, i, "filter").split("=");
-        filterMap.put(cf[0], cf[1]);
+        civiCrmFilterMap.put(cf[0], cf[1]);
       }
-
+      
+      nFields = rep.countNrStepAttributes(id_step, "prevFields");
+      civiCrmPrevFields = new ArrayList<String>();
+      for (int i = 0; i < nFields; i++) {
+        String cf = rep.getStepAttributeString(id_step, i, "prevFields");
+        civiCrmPrevFields.add(cf);
+      }
+      
+      nFields = rep.countNrStepAttributes(id_step, "filterOperator");
+      civiCrmFilterOperator = new ArrayList<String>();
+      for (int i = 0; i < nFields; i++) {
+        String cf = rep.getStepAttributeString(id_step, i, "filterOperator");
+        civiCrmFilterOperator.add(cf);
+      }
     } catch (Exception e) {
       throw new KettleException(BaseMessages.getString(PKG, "CiviCrmStep.Exception.UnexpectedErrorInReadingStepInfo"), e);
     }
@@ -163,17 +244,30 @@ public class CiviInputMeta extends CiviMeta implements StepMetaInterface {
   public void saveRep(Repository rep, ObjectId id_transformation, ObjectId id_step) throws KettleException {
     try {
       super.saveRep(rep, id_transformation, id_step);
-      
-      rep.saveStepAttribute(id_transformation, id_step, "civiCrmPageSize", civiCrmPageSize);
 
+      rep.saveStepAttribute(id_transformation, id_step, "civiCrmPageSize", civiCrmPageSize);
+      rep.saveStepAttribute(id_transformation, id_step, "hasPreviousStep", hasPreviousStep);
+      
+      
       int i = 0;
-      for (String filterKey : filterList) {
+      for (String filterKey : civiCrmFilterList) {
         rep.saveStepAttribute(id_transformation, id_step, i++, "filterKey", filterKey);
       }
 
       i = 0;
-      for (String filterField : filterMap.keySet()) {
-        rep.saveStepAttribute(id_transformation, id_step, i++, "filter", filterField + "=" + filterMap.get(filterField));
+      for (String filterField : civiCrmFilterMap.keySet()) {
+        rep.saveStepAttribute(id_transformation, id_step, i++, "filter", filterField + "=" + civiCrmFilterMap.get(filterField));
+      }
+
+      i = 0;
+      for (String previousField : civiCrmPrevFields) {
+        rep.saveStepAttribute(id_transformation, id_step, i++, "previousField", previousField);
+      }
+      
+      
+      i = 0;
+      for (String filterOperator : civiCrmFilterOperator) {
+        rep.saveStepAttribute(id_transformation, id_step, i++, "filterOperator", filterOperator);
       }
     } catch (Exception e) {
       throw new KettleException(BaseMessages.getString(PKG, "CiviCrmStep.Exception.UnableToSaveStepInfoToRepository") + id_step, e);
@@ -188,20 +282,20 @@ public class CiviInputMeta extends CiviMeta implements StepMetaInterface {
     this.civiCrmPageSize = civiCrmPageSize;
   }
 
-  protected HashMap<String, String> getFilterMap() {
-    return filterMap;
+  protected HashMap<String, String> getCiviCrmFilterMap() {
+    return civiCrmFilterMap;
   }
 
-  protected void setFilterMap(HashMap<String, String> filterMap) {
-    this.filterMap = filterMap;
+  protected void setCiviCrmFilterMap(HashMap<String, String> filterMap) {
+    this.civiCrmFilterMap = filterMap;
   }
 
-  protected ArrayList<String> getFilterList() {
-    return filterList;
+  protected ArrayList<String> getCiviCrmFilterList() {
+    return civiCrmFilterList;
   }
 
-  protected void setFilterList(ArrayList<String> filterList) {
-    this.filterList = filterList;
+  protected void setCiviCrmFilterList(ArrayList<String> filterList) {
+    this.civiCrmFilterList = filterList;
   }
 
   public StepDialogInterface getDialog(Shell shell, StepMetaInterface meta, TransMeta transMeta, String name) {
@@ -214,6 +308,30 @@ public class CiviInputMeta extends CiviMeta implements StepMetaInterface {
 
   public StepDataInterface getStepData() {
     return new CiviInputData();
+  }
+
+  protected ArrayList<String> getCiviCrmPrevFields() {
+    return civiCrmPrevFields;
+  }
+
+  protected void setCiviCrmPrevFields(ArrayList<String> prevFields) {
+    this.civiCrmPrevFields = prevFields;
+  }
+
+  protected ArrayList<String> getCiviCrmFilterOperator() {
+    return civiCrmFilterOperator;
+  }
+
+  protected void setCiviCrmFilterOperator(ArrayList<String> civiCrmFilterOperator) {
+    this.civiCrmFilterOperator = civiCrmFilterOperator;
+  }
+
+  protected boolean hasPreviousStep() {
+    return hasPreviousStep;
+  }
+
+  protected void setHasPreviousStep(boolean hasPreviousStep) {
+    this.hasPreviousStep = hasPreviousStep;
   }
 
 }

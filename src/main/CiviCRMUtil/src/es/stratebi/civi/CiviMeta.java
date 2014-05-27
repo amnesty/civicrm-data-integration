@@ -47,9 +47,12 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
   protected String civiCrmEntity;
   protected ArrayList<String> civiCrmEntityList = new ArrayList<String>();
 
-  protected HashMap<String, FieldAttrs> fields = new HashMap<String, FieldAttrs>();
+  protected HashMap<String, FieldAttrs> civiCrmFields = new HashMap<String, FieldAttrs>();
   protected HashMap<String, String> outputMap = new HashMap<String, String>();
-  protected ArrayList<String> keyList = new ArrayList<String>();
+  protected ArrayList<String> civiCrmKeyList = new ArrayList<String>();
+
+  protected Boolean civiCrmDebugMode;
+  protected String civiCrmResultField;
 
   public CiviMeta() {
     super();
@@ -89,23 +92,23 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
     this.civiCrmEntity = civiCrmEntity;
   }
 
-  public ArrayList<String> getKeyList() {
-    return keyList;
+  public ArrayList<String> getCiviCrmKeyList() {
+    return civiCrmKeyList;
   }
 
-  public void setKeyList(ArrayList<String> keyList) {
-    this.keyList = keyList;
+  public void setCiviCrmKeyList(ArrayList<String> keyList) {
+    this.civiCrmKeyList = keyList;
   }
 
   public ArrayList<String> getCiviCrmEntityList() {
     return civiCrmEntityList;
   }
 
-  public HashMap<String, String> getOutputMap() {
+  public HashMap<String, String> getCiviCrmOutputMap() {
     return outputMap;
   }
 
-  public void setOutputMap(HashMap<String, String> outputMap) {
+  public void setCiviCrmOutputMap(HashMap<String, String> outputMap) {
     this.outputMap = outputMap;
   }
 
@@ -113,12 +116,13 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
     this.civiCrmEntityList = civiCrmEntityList;
   }
 
-  public HashMap<String, FieldAttrs> getFields() {
-    return fields;
+  public HashMap<String, FieldAttrs> getCiviCrmFields() {
+    return civiCrmFields;
   }
 
-  public void setFields(HashMap<String, FieldAttrs> fields) {
-    this.fields = fields;
+  public void setCiviCrmFields(HashMap<String, FieldAttrs> fields) {
+    this.civiCrmFields.clear();
+    this.civiCrmFields.putAll(fields);
   }
 
   /*
@@ -133,6 +137,11 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
     civiCrmSiteKey = "";
     civiCrmEntity = "";
     civiCrmRestUrl = "";
+
+//    civiCrmRestUrl = "http://localhost/drupal/modules/civicrm-4.3.4-drupal/civicrm/extern/rest.php";
+//    civiCrmApiKey = "juan";
+//    civiCrmSiteKey = "123456789";
+//    civiCrmEntity = "Contact";
   }
 
   /*
@@ -151,9 +160,12 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
      * un atributo privado de CiviInput Aqui decimos el tipo de dato del campo
      */
 
-    for (String cField : keyList) {
+    for (String cField : civiCrmKeyList) {
       try {
-        ValueMetaInterface v = new ValueMeta(outputMap.get(cField), getMetaInterfaceType(fields.get(cField).getfType()));
+        // Añadido una verifición para evitar que campos ----------> Line no existentes queden fuera de la salida del paso al
+        // no encontrarse en el listado de campos devuelto por CiviCRM. En este caso se asume
+        // que el campo es una cadena automáticamente
+        ValueMetaInterface v = new ValueMeta(outputMap.get(cField), (civiCrmFields.get(cField) != null) ? getMetaInterfaceType(civiCrmFields.get(cField).getfType()) : ValueMetaInterface.TYPE_STRING);
         v.setOrigin(origin);
         r.addValueMeta(v);
       } catch (Exception e) {
@@ -166,7 +178,6 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
     // Valor por defecto para las conversiones en caso de que no podamos
     // identificar la constante
     int returnTypeValue = ValueMetaInterface.TYPE_STRING;
-
     try {
       Field f = FieldType.class.getDeclaredField("cType" + type);
       f.setAccessible(true);
@@ -189,18 +200,18 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
     // field by field copy is default
     CiviMeta retval = (CiviMeta) super.clone();
 
-    retval.fields = new HashMap<String, FieldAttrs>();
-    for (FieldAttrs cField : fields.values()) {
+    retval.civiCrmFields = new HashMap<String, FieldAttrs>();
+    for (FieldAttrs cField : civiCrmFields.values()) {
       try {
-        retval.fields.put(cField.getfFieldKey(), (FieldAttrs) cField.clone());
+        retval.civiCrmFields.put(cField.getfFieldKey(), (FieldAttrs) cField.clone());
       } catch (CloneNotSupportedException e) {
         e.printStackTrace();
       }
     }
 
-    retval.keyList = new ArrayList<String>();
-    for (String kField : keyList) {
-      retval.keyList.add(new String(kField));
+    retval.civiCrmKeyList = new ArrayList<String>();
+    for (String kField : civiCrmKeyList) {
+      retval.civiCrmKeyList.add(new String(kField));
     }
 
     retval.outputMap = new HashMap<String, String>();
@@ -212,8 +223,8 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
   }
 
   /*
-   * Este m�todo se llama siempre antes de ejecutar una transformaci�n, aqui
-   * est�n los valores de cada par�metro de los pasos que la componen por lo que
+   * Este metodo se llama siempre antes de ejecutar una transformacion, aqui
+   * estan los valores de cada parametro de los pasos que la componen por lo que
    * lo valores que se toman son los que va a tener los atributos de cada paso
    * 
    * @see org.pentaho.di.trans.step.BaseStepMeta#getXML()
@@ -226,12 +237,14 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
     retval.append("    ").append(XMLHandler.addTagValue("SiteKey", civiCrmSiteKey));
     retval.append("    ").append(XMLHandler.addTagValue("Entity", civiCrmEntity));
     retval.append("    ").append(XMLHandler.addTagValue("RestUrl", civiCrmRestUrl));
+    retval.append("    ").append(XMLHandler.addTagValue("ResultField", civiCrmResultField));
+    retval.append("    ").append(XMLHandler.addTagValue("DebugMode", civiCrmDebugMode));
 
     for (String entity : civiCrmEntityList) {
       retval.append("      <entity-name>").append(entity).append("</entity-name>").append(Const.CR);
     }
 
-    for (FieldAttrs cf : fields.values()) {
+    for (FieldAttrs cf : civiCrmFields.values()) {
       retval.append("      <field>").append(Const.CR);
       // Iterando por los campos de la clase
       Field[] fList = cf.getClass().getDeclaredFields();
@@ -250,7 +263,7 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
       retval.append("      </field>").append(Const.CR);
     }
 
-    for (String entity : keyList) {
+    for (String entity : civiCrmKeyList) {
       retval.append("      <key-index>").append(entity).append("</key-index>").append(Const.CR);
     }
 
@@ -272,6 +285,8 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
       civiCrmSiteKey = XMLHandler.getTagValue(stepnode, "SiteKey");
       civiCrmEntity = XMLHandler.getTagValue(stepnode, "Entity");
       civiCrmRestUrl = XMLHandler.getTagValue(stepnode, "RestUrl");
+      civiCrmResultField = XMLHandler.getTagValue(stepnode, "ResultField");
+      civiCrmDebugMode = Boolean.valueOf(XMLHandler.getTagValue(stepnode, "civiCrmDebugMode"));
       civiCrmEntityList = new ArrayList<String>();
 
       int totalNodes = XMLHandler.countNodes(stepnode, "entity-name");
@@ -288,7 +303,7 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
       }
 
       totalNodes = XMLHandler.countNodes(stepnode, "field");
-      fields = new HashMap<String, FieldAttrs>();
+      civiCrmFields = new HashMap<String, FieldAttrs>();
 
       for (int i = 0; i < totalNodes; i++) {
         Node fieldNode = XMLHandler.getSubNodeByNr(stepnode, "field", i);
@@ -307,10 +322,10 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
           }
         }
         // Guardando el campo en el mapa
-        fields.put(cf.getfFieldKey(), cf);
+        civiCrmFields.put(cf.getfFieldKey(), cf);
       }
 
-      keyList = new ArrayList<String>();
+      civiCrmKeyList = new ArrayList<String>();
 
       totalNodes = XMLHandler.countNodes(stepnode, "key-index");
 
@@ -319,7 +334,7 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
           // Extrayendo y actualizando el valor del campo
           Node node = XMLHandler.getSubNodeByNr(stepnode, "key-index", i);
           String entityName = XMLHandler.getNodeValue(node);
-          keyList.add(entityName);
+          civiCrmKeyList.add(entityName);
         } catch (IllegalArgumentException e) {
           e.printStackTrace();
         }
@@ -354,6 +369,8 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
       civiCrmSiteKey = rep.getStepAttributeString(id_step, "siteKey");
       civiCrmEntity = rep.getStepAttributeString(id_step, "entity");
       civiCrmRestUrl = rep.getStepAttributeString(id_step, "restUrl");
+      civiCrmResultField = rep.getStepAttributeString(id_step, "resultField");
+      civiCrmDebugMode = Boolean.valueOf(rep.getStepAttributeString(id_step, "civiCrmDebugMode"));
 
       int nFields = rep.countNrStepAttributes(id_step, "entityList");
       for (int i = 0; i < nFields; i++) {
@@ -361,17 +378,17 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
         civiCrmEntityList.add(cf);
       }
 
-      fields = new HashMap<String, FieldAttrs>();
+      civiCrmFields = new HashMap<String, FieldAttrs>();
       nFields = rep.countNrStepAttributes(id_step, "field");
       for (int i = 0; i < nFields; i++) {
         FieldAttrs cf = new FieldAttrs(rep.getStepAttributeString(id_step, i, "field"));
-        fields.put(cf.getfFieldKey(), cf);
+        civiCrmFields.put(cf.getfFieldKey(), cf);
       }
 
       nFields = rep.countNrStepAttributes(id_step, "keyList");
       for (int i = 0; i < nFields; i++) {
         String cf = rep.getStepAttributeString(id_step, i, "keyList");
-        keyList.add(cf);
+        civiCrmKeyList.add(cf);
       }
 
       outputMap = new HashMap<String, String>();
@@ -390,21 +407,23 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
       rep.saveStepAttribute(id_transformation, id_step, "apiKey", civiCrmApiKey);
       rep.saveStepAttribute(id_transformation, id_step, "siteKey", civiCrmSiteKey);
       rep.saveStepAttribute(id_transformation, id_step, "entity", civiCrmEntity);
-      rep.saveStepAttribute(id_transformation, id_step, "restUrl", civiCrmRestUrl);
-
+      rep.saveStepAttribute(id_transformation, id_step, "restUrl", civiCrmRestUrl); 
+      rep.saveStepAttribute(id_transformation, id_step, "resultField", civiCrmResultField); 
+      rep.saveStepAttribute(id_transformation, id_step, "civiCrmDebugMode", civiCrmDebugMode);
+      
       int i = 0;
       for (String entity : civiCrmEntityList) {
         rep.saveStepAttribute(id_transformation, id_step, i++, "entityList", entity);
       }
 
       i = 0;
-      for (Iterator<FieldAttrs> itField = fields.values().iterator(); itField.hasNext();) {
+      for (Iterator<FieldAttrs> itField = civiCrmFields.values().iterator(); itField.hasNext();) {
         FieldAttrs field = (FieldAttrs) itField.next();
         rep.saveStepAttribute(id_transformation, id_step, i++, "field", field.toString());
       }
 
       i = 0;
-      for (String entity : keyList) {
+      for (String entity : civiCrmKeyList) {
         rep.saveStepAttribute(id_transformation, id_step, i++, "keyList", entity);
       }
 
@@ -456,5 +475,21 @@ public abstract class CiviMeta extends BaseStepMeta implements StepMetaInterface
   public abstract StepInterface getStep(StepMeta stepMeta, StepDataInterface stepDataInterface, int cnr, TransMeta transMeta, Trans disp);
 
   public abstract StepDataInterface getStepData();
+
+  public Boolean getCiviCrmDebugMode() {
+    return civiCrmDebugMode;
+  }
+
+  public void setCiviCrmDebugMode(Boolean civiDebugMode) {
+    this.civiCrmDebugMode = civiDebugMode;
+  }
+
+  public String getCiviCrmResultField() {
+    return civiCrmResultField;
+  }
+
+  public void setCiviCrmResultField(String string) {
+    this.civiCrmResultField = string;
+  }
 
 }
