@@ -1,57 +1,37 @@
 CiviCRM Data Integration
 ========================
 
-This is a Pentaho Data Integration plugin for CiviCRM. It allows you to take advantage
-of the power of Pentaho Data Integration tools and use it with your CiviCRM instance.
+CiviCRM Data Integration is a tool intended to allow advanced users to perform bulk tasks (import and export data, perform data quality checks, etc) over a CiviCRM database without needing development skills.
 
-It uses CiviCRM API version 3, so you don't have to work directly with the data
-tables. :-D
+This is a Pentaho Data Integration (aka Kettle) plugin for CiviCRM. It allows you to take advantage of the power of Pentaho Data Integration tools and use it with your CiviCRM instance.
 
-We recommend PDI version 4.3 or higher. You can download Pentaho Data Integration here:
-http://sourceforge.net/projects/pentaho/
-
-Introduction
+Requirements
 ------------
 
-You can use the input plugin or the output plugin separately, or both together.
-These plugins have been developed to simplify the data manipulation with CiviCRM.
+To take advantage of this plugin, you'll need to install the Pentaho Data Integration software. We redommend you downloading the latest stable version from its [SourceForge site](https://sourceforge.net/projects/pentaho/files/Data%20Integration/).
 
-Once plugins have been installed you will be able to get/insert data into your CiviCRM in a easy way.
+What does these piece of software do?
+-------------------------------------
 
+This plugin offers you the possibility of easily interacting with the CiviCRM API v3. As you may know, CiviCRM API is the recommended way to integrate CiviCRM with other applications.
 
-
-What do these plugins do?
---------------------------
-
-CIVICRMInput: Gets data from your CiviCRM entity. 
-CIVICRMOutput: Inserts / Updates fields into your CiviCRM entity. If you fill in the id entity you will update that record, if not you will insert.
-
-The plugins require some credential information for your CiviCRM instance. You will need your REST URL, Site Key and Api Key from CiviCRM.
-
+Whenever you want to read, or write data from or into a CiviCRM instance, you're suggested to do that trought its API.
 
 How to install it?
 ------------------
 
-The steps are very simple:
+If you're using Pentaho Data Integration 5.0 (or higher), you're encouraged to install this plugin using the new [Marketplace](http://wiki.pentaho.com/display/EAI/Marketplace).
 
-1) Copy the plugin folder into your ${pdi_path}/data-integration/plugins/steps/
+To install this tool using the Pentaho Data Integration's Marketplace, you only need to:
 
-2) Copy json-3.1.1.jar lib into your ${pdi_path}/data-integration/libext/
-
-3) Run PDI, and enjoy!! You will find the plugins' steps for making a new transformation in the section input/output
-
-
-Are you a developer?
---------------------
-
-This section will be available soon.
-
+* Open Help > Marketplace
+* Look for CiviCRM
+* Click Install
 
 License
 -------
 
-CiviCRM Data Integration. Plugins for managing data (get/insert) into your CiviCRM instance in a easy way. Copyright (C) 2013 Amnesty International (originally developed by Stratebi http://www.stratebi.com/).
+CiviCRM Data Integration. Copyright (C) 2013 Amnesty International (originally developed by Stratebi http://www.stratebi.com/).
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program (see LICENSE.txt). If not, see http://www.gnu.org/licenses/.
-
