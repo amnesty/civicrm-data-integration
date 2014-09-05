@@ -1,7 +1,7 @@
-CiviCRM Data Integration
+Civi Data Integration
 ========================
 
-CiviCRM Data Integration is a tool intended to allow advanced users to perform bulk tasks (import and export data, perform data quality checks, etc) over a CiviCRM database without needing development skills.
+Civi Data Integration is a tool intended to allow advanced users to perform bulk tasks (import and export data, perform data quality checks, etc) over a CiviCRM database without needing development skills.
 
 This is a Pentaho Data Integration (aka Kettle) plugin for CiviCRM. It allows you to take advantage of the power of Pentaho Data Integration tools and use it with your CiviCRM instance.
 
