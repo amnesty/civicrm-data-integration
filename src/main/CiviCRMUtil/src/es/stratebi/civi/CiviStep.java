@@ -3,6 +3,7 @@ package es.stratebi.civi;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 
+import es.stratebi.civi.util.CiviField;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.exception.KettleValueException;
@@ -15,8 +16,6 @@ import org.pentaho.di.trans.step.StepDataInterface;
 import org.pentaho.di.trans.step.StepInterface;
 import org.pentaho.di.trans.step.StepMeta;
 import org.pentaho.di.trans.step.StepMetaInterface;
-
-import es.stratebi.civi.util.FieldAttrs;
 
 /*
  * 
@@ -49,8 +48,8 @@ public abstract class CiviStep extends BaseStep implements StepInterface {
 
     /**
      * Leemos solo una fila de la lista y la devolvemos para que sea enviada hacia el paso siguiente
-     * Deberiamos hacer las conversiones de tipo aqui, pero debo analizar esta parte, de momento
-     * todo es tratado como String
+     * Deberiamos hacer las conversiones de tipo aqui, pero debo analizar esta parte,
+     * de momento son tratados como String
      * @throws KettleException 
      */
     
@@ -62,11 +61,11 @@ public abstract class CiviStep extends BaseStep implements StepInterface {
                 return null;
             }
 
-            FieldAttrs cf = ((CiviMeta) civiMeta).getCiviCrmFields().get(field);
+            CiviField cf = ((CiviMeta) civiMeta).getCiviCrmListingFields().get(field);
 
             int metaType =  ValueMetaInterface.TYPE_STRING;
             if (cf != null)
-               metaType = ((CiviMeta) civiMeta).getMetaInterfaceType(cf.getfType());
+               metaType = cf.getMetaInterfaceType();
 
             switch (metaType) {
             case ValueMetaInterface.TYPE_INTEGER:
@@ -92,9 +91,6 @@ public abstract class CiviStep extends BaseStep implements StepInterface {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            // /throw new
-            // Exception("Unexpected conversion error while converting value ["+toString()+"] to an Integer",
-            // e);
         }
         return null;
     }

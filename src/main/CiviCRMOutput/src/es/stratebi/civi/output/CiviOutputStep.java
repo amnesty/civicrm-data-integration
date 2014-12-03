@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import es.stratebi.civi.util.CiviRestService;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.row.RowMetaInterface;
 import org.pentaho.di.core.row.ValueMetaInterface;
@@ -16,10 +17,9 @@ import org.pentaho.di.trans.step.StepMeta;
 import org.pentaho.di.trans.step.StepMetaInterface;
 
 import es.stratebi.civi.CiviStep;
-import es.stratebi.civi.util.RestUtil;
 
 public class CiviOutputStep extends CiviStep implements StepInterface {
-  private RestUtil crUtil;
+  private CiviRestService crUtil;
 
   public CiviOutputStep(StepMeta s, StepDataInterface stepDataInterface, int c, TransMeta t, Trans dis) {
     super(s, stepDataInterface, c, t, dis);
@@ -62,14 +62,15 @@ public class CiviOutputStep extends CiviStep implements StepInterface {
     String[] fieldNames = getInputRowMeta().getFieldNames();
     for (String field : ((CiviOutputMeta) civiMeta).getCiviCrmKeyList()) {
       String civiField = ((CiviOutputMeta) civiMeta).getCiviCrmOutputMap().get(field);
-      params = params + "&" + civiField;
+//      params = params + "&" + civiField;
       int i = 0;
       for (String fName : fieldNames) {
         if (fName.equals(field)) {
           if (inData[i] != null && !inData[i].toString().isEmpty()) {
-            params = params + "=" + inData[i];
+            params = params + "&" + civiField + "=" + inData[i];
           } else {
-            params += "=";
+              // Ignorar campo id si este no viene con datos para crear un nuevo registro
+              if (!civiField.equalsIgnoreCase("id")) params += civiField + "=";
           }
 
         }
@@ -84,7 +85,8 @@ public class CiviOutputStep extends CiviStep implements StepInterface {
     String resultField = environmentSubstitute(((CiviOutputMeta) civiMeta).getCiviCrmResultField());
     if (log.isRowLevel()) {
       logRowlevel("Call no limit url\n\t\t" + crUtil.getCallUrl());
-      if (!resultField.equals("")) {
+      logRowlevel("CiviCRM API response \n\t\t" + jsonResult);
+      if (resultField != null && !resultField.equals("")) {
         logRowlevel("JSON: " + jsonResult);
       }
     }
@@ -111,11 +113,11 @@ public class CiviOutputStep extends CiviStep implements StepInterface {
   public boolean init(StepMetaInterface smi, StepDataInterface sdi) {
     boolean passed = super.init(smi, sdi);
     if (passed) {
-      crUtil = new RestUtil(environmentSubstitute(((CiviOutputMeta) civiMeta).getCiviCrmRestUrl()),
+      crUtil = new CiviRestService(environmentSubstitute(((CiviOutputMeta) civiMeta).getCiviCrmRestUrl()),
           environmentSubstitute(((CiviOutputMeta) civiMeta).getCiviCrmApiKey()),
           environmentSubstitute(((CiviOutputMeta) civiMeta).getCiviCrmSiteKey()),
           environmentSubstitute(((CiviOutputMeta) civiMeta).getCiviCrmEntity()));
-      crUtil.setAction("CREATE");
+      crUtil.setAction(((CiviOutputMeta) civiMeta).getCiviCrmAction());
     }
     return passed;
   }
