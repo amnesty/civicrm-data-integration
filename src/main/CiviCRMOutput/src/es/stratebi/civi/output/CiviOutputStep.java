@@ -70,7 +70,7 @@ public class CiviOutputStep extends CiviStep implements StepInterface {
             params = params + "&" + civiField + "=" + inData[i];
           } else {
               // Ignorar campo id si este no viene con datos para crear un nuevo registro
-              if (!civiField.equalsIgnoreCase("id")) params += civiField + "=";
+              if (!civiField.equalsIgnoreCase("id")) params += "&" + civiField + "=";
           }
 
         }
