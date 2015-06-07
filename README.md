@@ -15,7 +15,7 @@ What does this piece of software do?
 
 This plugin offers you the possibility of easily interacting with the CiviCRM API v3. As you may know, CiviCRM API is the recommended way to integrate CiviCRM with other applications.
 
-Whenever you want to read, or write data from or into a CiviCRM instance, you're suggested to do that trought its API.
+Whenever you want to read or write data from or into a CiviCRM instance, you can do that using the API.
 
 How do I install it?
 ------------------
