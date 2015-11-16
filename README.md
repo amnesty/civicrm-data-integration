@@ -8,14 +8,14 @@ This is a Pentaho Data Integration (aka Kettle) plugin for CiviCRM. It allows yo
 Requirements
 ------------
 
-To take advantage of this plugin, you'll need to install the Pentaho Data Integration software. We redommend you downloading the latest stable version from its [SourceForge site](https://sourceforge.net/projects/pentaho/files/Data%20Integration/).
+To take advantage of this plugin, you'll need to install the Pentaho Data Integration software. We recommend that you download the latest stable version from its [SourceForge site](https://sourceforge.net/projects/pentaho/files/Data%20Integration/).
 
-What does these piece of software do?
+What does this piece of software do?
 -------------------------------------
 
 This plugin offers you the possibility of easily interacting with the CiviCRM API v3. As you may know, CiviCRM API is the recommended way to integrate CiviCRM with other applications.
 
-Whenever you want to read, or write data from or into a CiviCRM instance, you're suggested to do that trought its API.
+Whenever you want to read data from or write data into a CiviCRM instance, you can do that through CiviCRM's API.
 
 How to install it?
 ------------------
